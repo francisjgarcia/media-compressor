@@ -8,6 +8,11 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100
 
+# Install the required system packages
+RUN apk add --no-cache \
+    cifs-utils \
+    ffmpeg
+
 # Create a non-privileged user to run the application
 RUN adduser -D -s /bin/sh python
 
@@ -28,11 +33,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy the application code into the container
 COPY --chown=python:python src/ .
 
-# Expose port 5000 for the application
-EXPOSE 5000
-
 # Change the user to the non-privileged user
 USER python
 
 # Run the application
-CMD ["python", "main.py"]
+ENTRYPOINT ["python", "main.py"]

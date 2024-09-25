@@ -1,18 +1,19 @@
 services:
-  template:
-    container_name: template
-    image: ghcr.io/francisjgarcia/template:local
+  media-compressor:
+    container_name: media-compressor
+    image: ghcr.io/francisjgarcia/media-compressor:local
     build:
       context: ..
       dockerfile: ./docker/Dockerfile.local
-    ports:
-      - '${APP_PORT:-5000}:5000'
     env_file:
       - .env
+      - ../src/.env
     volumes:
       - ../src:/app
       - ../tests:/app/tests
     user: root
+    privileged: true
     tty: true
+    entrypoint: ["/bin/sh", "-c"]
     command: /bin/sh
     restart: on-failure
