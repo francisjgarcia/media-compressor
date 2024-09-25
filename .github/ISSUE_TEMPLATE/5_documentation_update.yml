@@ -1,0 +1,31 @@
+---
+name: 📚 Documentation update
+labels: ["documentation"]
+assignees: francisjgarcia
+description: |
+  Use this template to suggest changes or updates to the documentation.
+body:
+  - type: textarea
+    attributes:
+      label: 📝 Description of the documentation update
+      description: Clearly describe the documentation update you are proposing.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 📍 Location
+      description: Where in the documentation does this change need to be made? (e.g., specific page or section)
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✏️ Proposed changes
+      description: What changes do you propose? Provide details or examples if possible.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: ℹ️ Additional information
+      description: Add any other relevant information or context about the documentation update here.
+    validations:
+      required: false

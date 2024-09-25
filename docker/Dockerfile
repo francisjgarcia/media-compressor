@@ -1,0 +1,37 @@
+# Use an official Python base image
+FROM python:3.12-alpine
+
+# Set environment variables to ensure Python output is sent straight to the terminal
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=on \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
+
+# Create a non-privileged user to run the application
+RUN adduser -D -s /bin/sh python
+
+# Set the working directory for subsequent commands
+WORKDIR /app
+
+# Change the ownership of the working directory to the non-privileged user
+RUN chown python:python /app
+
+# Copy the requirements file to the container and install dependencies
+COPY --chown=python:python src/requirements.txt .
+
+# Upgrade pip and install Python dependencies specified in the requirements file
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy the application code into the container
+COPY --chown=python:python src/ .
+
+# Expose port 5000 for the application
+EXPOSE 5000
+
+# Change the user to the non-privileged user
+USER python
+
+# Run the application
+CMD ["python", "main.py"]

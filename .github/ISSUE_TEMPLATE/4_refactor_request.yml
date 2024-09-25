@@ -1,0 +1,31 @@
+---
+name: 🔄 Refactor request
+labels: ["refactor"]
+assignees: francisjgarcia
+description: |
+  Use this template to suggest areas of the code that need refactoring for improved readability, maintainability, or performance.
+body:
+  - type: textarea
+    attributes:
+      label: 🔄 Description of the code that needs refactoring
+      description: Describe the part of the codebase that you believe needs refactoring.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 💡 Reason for refactoring
+      description: Why do you think this part of the code should be refactored?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 📊 Proposed solution or refactoring approach
+      description: How would you suggest refactoring the code? Provide details or examples if possible.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: 📝 Additional information
+      description: Add any other relevant information or examples.
+    validations:
+      required: false

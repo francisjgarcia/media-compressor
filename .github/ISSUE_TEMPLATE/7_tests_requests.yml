@@ -1,0 +1,37 @@
+---
+name: 🧪 Test request
+labels: ["tests"]
+assignees: francisjgarcia
+description: |
+  Use this template to propose adding, improving, or removing tests in the codebase.
+body:
+  - type: textarea
+    attributes:
+      label: 🧪 Test description
+      description: Provide a detailed description of the test you want to add, improve, or remove.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🎯 Objective of the test
+      description: What is the purpose of this test? What functionality does it cover?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🔄 Changes proposed
+      description: Describe the specific changes you are proposing regarding the tests.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ⚠️ Risks or considerations
+      description: Are there any risks or considerations to be aware of regarding these changes?
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: ℹ️ Additional information
+      description: Add any other relevant details that can help assess this test request.
+    validations:
+      required: false

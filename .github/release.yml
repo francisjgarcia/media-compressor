@@ -1,0 +1,32 @@
+changelog:
+  categories:
+    - title: Bug fixes 🐛
+      labels:
+        - bug
+    - title: New features 🚀
+      labels:
+        - enhancement
+    - title: Improvements 🔧
+      labels:
+        - improvement
+    - title: Performance 🐢
+      labels:
+        - performance
+    - title: Refactoring 🔄
+      labels:
+        - refactor
+    - title: Documentation 📚
+      labels:
+        - documentation
+    - title: Security 🔒
+      labels:
+        - security
+    - title: Dependency Updates ⬆️
+      labels:
+        - dependencies
+    - title: Tests 🧪
+      labels:
+        - tests
+    - title: Other Changes 🔄
+      labels:
+        - "*"

@@ -1,0 +1,185 @@
+# .github/workflows/remove-deploy.yml
+name: Remove application from server
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: .
+
+jobs:
+  setup:
+    name: Setup environment
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
+
+    outputs:
+      environment: ${{ steps.get_variables.outputs.environment }}
+      tag_version: ${{ steps.get_variables.outputs.tag_version }}
+      repo_name: ${{ steps.get_variables.outputs.repo_name }}
+      application_url: ${{ steps.get_variables.outputs.application_url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set environment output
+        id: get_variables
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_BRANCH: ${{ github.ref }}
+        run: |
+          echo "environment=${{ github.ref == 'refs/heads/main' && 'production' }}" >> $GITHUB_OUTPUT
+          echo "tag_version=$(git tag -l | sort -V | tail -n 1)" >> $GITHUB_OUTPUT
+          echo "repo_name=$(echo ${{ env.GITHUB_REPOSITORY }} | awk -F/ '{print $2}')" >> $GITHUB_OUTPUT
+          echo "application_url=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/${{ env.GITHUB_REPOSITORY }} | jq -r '.homepage')" >> $GITHUB_OUTPUT
+
+      - name: Create setup summary
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_BRANCH: ${{ github.ref }}
+          ENVIRONMENT: ${{ steps.get_variables.outputs.environment }}
+          TAG_VERSION: ${{ steps.get_variables.outputs.tag_version }}
+          REPO_NAME: ${{ steps.get_variables.outputs.repo_name }}
+          APPLICATION_URL: ${{ steps.get_variables.outputs.application_url }}
+        run: |
+          echo "## Setup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Output variables" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Tag version: [${{ env.TAG_VERSION }}](https://github.com/${{ env.GITHUB_REPOSITORY }}/releases/tag/${{ env.TAG_VERSION }})" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository name: [${{ env.REPO_NAME }}](https://github.com/${{ env.GITHUB_REPOSITORY }})" >> $GITHUB_STEP_SUMMARY
+          if [ ! -z ${{ env.APPLICATION_URL }} ]; then
+            echo "- Application URL: ${{ env.APPLICATION_URL }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  remove-deploy:
+    name: Remove application from server
+    needs: [setup]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Add SSH private key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PROXY_PORT: ${{ secrets.SSH_PROXY_PORT }}
+          SSH_PROXY_HOST: ${{ secrets.SSH_PROXY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ env.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/id_rsa
+          eval $(ssh-agent)
+          ssh-add ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ env.SSH_PROXY_PORT }} -H ${{ env.SSH_PROXY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Add SSH config
+        env:
+          SSH_PRIVATE_HOST: ${{ secrets.SSH_PRIVATE_HOST }}
+          SSH_PRIVATE_USER: ${{ secrets.SSH_PRIVATE_USER }}
+          SSH_PRIVATE_PORT: ${{ secrets.SSH_PRIVATE_PORT }}
+          SSH_PROXY_USER: ${{ secrets.SSH_PROXY_USER }}
+          SSH_PROXY_HOST: ${{ secrets.SSH_PROXY_HOST }}
+          SSH_PROXY_PORT: ${{ secrets.SSH_PROXY_PORT }}
+        run: |
+          echo "Host proxy
+                HostName ${{ env.SSH_PRIVATE_HOST }}
+                User ${{ env.SSH_PRIVATE_USER }}
+                Port ${{ env.SSH_PRIVATE_PORT }}
+                ProxyJump ${{ env.SSH_PROXY_USER }}@${{ env.SSH_PROXY_HOST }}:${{ env.SSH_PROXY_PORT }}
+                StrictHostKeyChecking no
+                UserKnownHostsFile /dev/null
+          " >> ~/.ssh/config
+
+      - name: Create docker context
+        run: |
+          docker context create proxy --docker host=ssh://proxy
+          docker context use proxy
+
+      - name: Remove application from server
+        env:
+          REPO_NAME: ${{ needs.setup.outputs.repo_name }}
+        run: |
+          if [ "$(docker ps -a -q -f name=${{ env.REPO_NAME }})" ]; then
+            docker rm -f ${{ env.REPO_NAME }}
+          fi
+
+      - name: Remove old docker images
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          for DOCKER_IMAGE_ID in $(docker images -q ghcr.io/${{ env.GITHUB_REPOSITORY }}); do
+            docker rmi -f $DOCKER_IMAGE_ID || true
+          done
+
+      - name: Create remove-deploy summary
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: |
+          echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{ env.REPO_NAME }} container has been removed from server." >> $GITHUB_STEP_SUMMARY
+
+  delete-record:
+    name: Delete record in Cloudflare
+    needs: [setup]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+      url: ${{ needs.setup.outputs.application_url }}
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Get Cloudflare Zone ID for domain
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          APPLICATION_URL: ${{ needs.setup.outputs.application_url }}
+        run: |
+          CLEAN_URL=$(echo "${{ env.APPLICATION_URL }}" | sed -e 's~http[s]*://~~g')
+          DOMAIN=$(echo "$CLEAN_URL" | awk -F. '{print $(NF-1)"."$NF}')
+          SUBDOMAIN=$(echo "$CLEAN_URL" | sed "s/.$DOMAIN//")
+
+          CLOUDFLARE_ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN" \
+          -H "Authorization: Bearer ${{ env.CLOUDFLARE_API_TOKEN }}" \
+          -H "Content-Type: application/json" | jq -r '.result[0].id')
+
+          echo "CLOUDFLARE_ZONE_ID=$CLOUDFLARE_ZONE_ID" >> $GITHUB_ENV
+          echo "DOMAIN=$DOMAIN" >> $GITHUB_ENV
+          echo "SUBDOMAIN=$SUBDOMAIN" >> $GITHUB_ENV
+
+      - name: Delete CNAME record from Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ env.CLOUDFLARE_ZONE_ID }}
+          SUBDOMAIN: ${{ env.SUBDOMAIN }}
+          DOMAIN: ${{ env.DOMAIN }}
+        run: |
+          RECORD_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${{ env.CLOUDFLARE_ZONE_ID }}/dns_records?type=CNAME&name=${{ env.SUBDOMAIN }}.${{ env.DOMAIN }}" \
+          -H "Authorization: Bearer ${{ env.CLOUDFLARE_API_TOKEN }}" \
+          -H "Content-Type: application/json" | jq -r '.result[0].id // empty')
+
+          if [ -n "$RECORD_ID" ]; then
+            curl -X DELETE "https://api.cloudflare.com/client/v4/zones/${{ env.CLOUDFLARE_ZONE_ID }}/dns_records/$RECORD_ID" \
+            -H "Authorization: Bearer ${{ env.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json"
+            echo "CNAME record deleted: $RECORD_ID"
+          fi
+
+      - name: Create delete register summary
+        env:
+          SUBDOMAIN: ${{ env.SUBDOMAIN }}
+          DOMAIN: ${{ env.DOMAIN }}
+        run: |
+          echo "## Delete Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- The CNAME record for ${{ env.SUBDOMAIN }}.${{ env.DOMAIN }} has been deleted from Cloudflare." >> $GITHUB_STEP_SUMMARY

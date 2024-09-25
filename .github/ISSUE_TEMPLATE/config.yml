@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💁🏼 Common Issues
+    url: https://github.com/francisjgarcia/template/blob/main/SUPPORT.md#frequently-asked-questions-faq
+    about: Check the FAQ for common issues.

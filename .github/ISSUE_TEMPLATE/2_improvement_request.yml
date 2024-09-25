@@ -1,0 +1,31 @@
+---
+name: 🔧 Improvement request
+labels: ["improvement"]
+assignees: francisjgarcia
+description: |
+  Use this template if you'd like to suggest an improvement to an existing feature.
+body:
+  - type: textarea
+    attributes:
+      label: 🔧 Description of the improvement
+      description: Clearly describe the improvement you'd like to see in an existing feature.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 📝 Current behavior
+      description: Describe the current behavior of the feature.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: 💡 Proposed behavior
+      description: How should the feature behave after the improvement?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ℹ️ Additional information
+      description: Add any other context or screenshots to support your improvement request.
+    validations:
+      required: false

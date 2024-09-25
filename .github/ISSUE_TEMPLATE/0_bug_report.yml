@@ -1,0 +1,68 @@
+---
+name: 🐛 Bug Report
+labels: ["bug"]
+assignees: francisjgarcia
+description: |
+  Use this template if something is not working as expected.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        I receive many bug reports, and some of them are due to configuration issues or user error. To help investigate your issue as effectively as possible, please provide as much detail as you can. This will help resolve the problem faster.
+  - type: checkboxes
+    attributes:
+      label: 🔍 Check for existing issues
+      description: Please check the existing issues before creating a new one to avoid duplicates. If you find a similar issue, give it a 👍 to indicate you're experiencing the same problem.
+      options:
+        - label: Completed
+          required: true
+  - type: dropdown
+    attributes:
+      label: 🖥️ How is the project deployed?
+      description: Select the environment or components where the project is running.
+      options:
+        - Local
+        - Docker
+        - Other
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: 📦 Project version
+      description: Specify the version of the project you're using. It can be found in logs, the settings page, or the release notes.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ✅ Command or configuration used to run the project
+      description: Please provide the command or configuration (e.g., `compose.yml`) you used to deploy the project.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 🐛 Describe the bug / provide steps to reproduce it
+      description: Clearly describe the issue and the steps to reproduce it.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 📑 Steps to Reproduce
+      description: |
+        1. Step 1
+        2. Step 2
+        3. Step 3
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 📸 If applicable, add screenshots to help explain your bug
+      description: You can drag and drop screenshots into the text input below to better illustrate the issue.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: 📜 If applicable, attach relevant logs or error messages
+      description: Providing logs or error messages can help diagnose the issue faster.
+    validations:
+      required: false

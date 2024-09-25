@@ -1,0 +1,636 @@
+# .github/workflows/cicd.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - development
+
+permissions:
+  contents: write
+  packages: write
+
+defaults:
+  run:
+    shell: bash
+    working-directory: .
+
+jobs:
+  setup:
+    name: Setup environment
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || github.ref == 'refs/heads/development' && 'development' }}
+    if: github.event.head_commit.message != 'Initial commit'
+
+    outputs:
+      tag_version: ${{ steps.tag.outputs.tag_version }}
+      environment: ${{ steps.get_variables.outputs.environment }}
+      repo_name: ${{ steps.get_variables.outputs.repo_name }}
+      repo_description: ${{ steps.get_variables.outputs.repo_description }}
+      application_url: ${{ steps.get_variables.outputs.application_url }}
+      author_name: ${{ steps.get_variables.outputs.author_name }}
+      author_email: ${{ steps.get_variables.outputs.author_email }}
+      created_at: ${{ steps.get_variables.outputs.created_at }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate next tag version
+        id: tag
+        env:
+          GITHUB_BRANCH: ${{ github.ref }}
+        run: |
+          if [[ "${{ env.GITHUB_BRANCH }}" == "refs/heads/main" ]]; then
+            TAG_COUNT=$(git tag | wc -l)
+
+            if [ "$TAG_COUNT" -eq 0 ]; then
+              NEXT_TAG="v1.0.0"
+
+            else
+              CURRENT_TAG=$(git tag -l | sort -V | tail -n 1 | sed 's/^v//')
+              IFS='.' read -r -a VERSION <<< "$CURRENT_TAG"
+
+              COMMIT_MESSAGE=$(git log -1 --pretty=format:'%s')
+
+              if [[ $COMMIT_MESSAGE == *"[major]"* ]]; then
+                VERSION[0]=$((VERSION[0] + 1))
+                VERSION[1]=0
+                VERSION[2]=0
+              elif [[ $COMMIT_MESSAGE == *"[minor]"* ]]; then
+                VERSION[1]=$((VERSION[1] + 1))
+                VERSION[2]=0
+              elif [[ $COMMIT_MESSAGE == *"[patch]"* ]]; then
+                VERSION[2]=$((VERSION[2] + 1))
+              else
+                # Default to incrementing the minor version
+                VERSION[1]=$((VERSION[1] + 1))
+                VERSION[2]=0
+              fi
+
+              NEXT_TAG="v${VERSION[0]}.${VERSION[1]}.${VERSION[2]}"
+            fi
+
+            echo "tag_version=$NEXT_TAG" >> $GITHUB_OUTPUT
+
+          elif [[ "${{ env.GITHUB_BRANCH }}" == "refs/heads/development" ]]; then
+            echo "tag_version=development" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set environment output
+        id: get_variables
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_BRANCH: ${{ github.ref }}
+        run: |
+          echo "environment=${{ github.ref == 'refs/heads/main' && 'production' || github.ref == 'refs/heads/development' && 'development' }}" >> $GITHUB_OUTPUT
+          echo "repo_name=$(echo ${{ env.GITHUB_REPOSITORY }} | awk -F/ '{print $2}')" >> $GITHUB_OUTPUT
+          echo "repo_description=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/${{ env.GITHUB_REPOSITORY }} | jq -r '.description')" >> $GITHUB_OUTPUT
+          echo "author_name=$(git log -1 --pretty=format:'%an')" >> $GITHUB_OUTPUT
+          echo "author_email=$(git log -1 --pretty=format:'%ae')" >> $GITHUB_OUTPUT
+          if [[ "${{ env.GITHUB_BRANCH }}" == "refs/heads/main" ]]; then
+            echo "application_url=$(curl -s -H "Authorization: token ${{ env.GITHUB_TOKEN }}" https://api.github.com/repos/${{ env.GITHUB_REPOSITORY }} | jq -r '.homepage')" >> $GITHUB_OUTPUT
+          fi
+          echo "created_at=$(date --rfc-3339=seconds)" >> $GITHUB_OUTPUT
+
+      - name: Create setup summary
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_BRANCH: ${{ github.ref }}
+          ENVIRONMENT: ${{ steps.get_variables.outputs.environment }}
+          TAG_VERSION: ${{ steps.tag.outputs.tag_version }}
+          REPO_NAME: ${{ steps.get_variables.outputs.repo_name }}
+          REPO_DESCRIPTION: ${{ steps.get_variables.outputs.repo_description }}
+          AUTHOR_NAME: ${{ steps.get_variables.outputs.author_name }}
+          AUTHOR_EMAIL: ${{ steps.get_variables.outputs.author_email }}
+          APPLICATION_URL: ${{ steps.get_variables.outputs.application_url }}
+          CREATED_AT: ${{ steps.get_variables.outputs.created_at }}
+        run: |
+          echo "## Setup summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Output variables" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ env.GITHUB_BRANCH }}" == "refs/heads/main" ]]; then
+            echo "- Tag version: [${{ env.TAG_VERSION }}](https://github.com/${{ env.GITHUB_REPOSITORY }}/releases/tag/${{ env.TAG_VERSION }})" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Tag version: ${{ env.TAG_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- Repository name: [${{ env.REPO_NAME }}](https://github.com/${{ env.GITHUB_REPOSITORY }})" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository description: ${{ env.REPO_DESCRIPTION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Author name: ${{ env.AUTHOR_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Author email: ${{ env.AUTHOR_EMAIL }}" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ env.GITHUB_BRANCH }}" == "refs/heads/main" ]]; then
+            if [ ! -z ${{ env.APPLICATION_URL }} ]; then
+              echo "- Application URL: ${{ env.APPLICATION_URL }}" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          echo "- Created at: ${{ env.CREATED_AT }}" >> $GITHUB_STEP_SUMMARY
+
+  build:
+    name: Build image
+    needs: [setup]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up docker buildx
+        uses: docker/setup-buildx-action@v3.6.1
+
+      - name: Build docker image
+        uses: docker/build-push-action@v6.7.0
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+          AUTHOR_NAME: ${{ needs.setup.outputs.author_name }}
+          AUTHOR_EMAIL: ${{ needs.setup.outputs.author_email }}
+          REPO_NAME: ${{ needs.setup.outputs.repo_name }}
+          REPO_DESCRIPTION: ${{ needs.setup.outputs.repo_description }}
+          CREATED_AT: ${{ needs.setup.outputs.created_at }}
+        with:
+          load: true
+          platforms: linux/amd64
+          context: .
+          file: ./docker/Dockerfile
+          tags: ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}
+          labels: |
+            org.opencontainers.image.authors=${{ env.AUTHOR_NAME }} <${{ env.AUTHOR_EMAIL }}>
+            org.opencontainers.image.title=${{ env.REPO_NAME }}
+            org.opencontainers.image.description=${{ env.REPO_DESCRIPTION }}
+            org.opencontainers.image.version=${{ env.TAG_VERSION }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.source=https://github.com/${{ env.GITHUB_REPOSITORY }}
+            org.opencontainers.image.documentation=https://github.com/${{ env.GITHUB_REPOSITORY }}/blob/${{ env.TAG_VERSION }}/README.md
+            org.opencontainers.image.created=${{ env.CREATED_AT }}
+
+      - name: Save docker image
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: docker save ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }} -o docker-image.tar
+
+      - name: Upload docker image as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: docker-image.tar
+
+  tests:
+    name: Test application
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load docker image
+        run: docker load -i /tmp/docker-image.tar
+
+      - name: Run flake8
+        if: always()
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: docker run --rm --user root -v ${{ env.GITHUB_WORKSPACE }}/tests:/app/tests ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }} sh -c "pip install flake8 > /dev/null 2>&1 && flake8" > result_flake8.log
+
+      - name: Run pytest
+        if: always()
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: |
+          if ls tests/*.py 1> /dev/null 2>&1; then
+            docker run --rm --user root -v ${{ env.GITHUB_WORKSPACE }}/tests:/app/tests ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }} sh -c "pip install pytest > /dev/null 2>&1 && pytest" > result_pytest.log
+          else
+            echo "No tests found, skipping pytest." > result_pytest.log
+          fi
+
+      - name: Create tests summary
+        if: always()
+        run: |
+          echo "## Test summary" >> $GITHUB_STEP_SUMMARY
+          echo "### flake8 results" >> $GITHUB_STEP_SUMMARY
+          if [ ! -s result_flake8.log ]; then
+            echo "No flake8 errors found." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "$(cat result_flake8.log)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "### pytest results" >> $GITHUB_STEP_SUMMARY
+          echo "$(cat result_pytest.log)" >> $GITHUB_STEP_SUMMARY
+
+  scan:
+    name: Scan vulnerabilities
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+
+    steps:
+      - name: Download docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load docker image
+        run: docker load -i /tmp/docker-image.tar
+
+      - name: Run trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.20.0
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        with:
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          image-ref: 'ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          exit-code: '1'
+
+      - name: Create scan summary
+        if: always()
+        run: |
+          echo "## Vulnerability Scan summary" > $GITHUB_STEP_SUMMARY
+          if [ -s trivy-results.sarif ]; then
+            CRITICAL_OR_HIGH=$(jq -r '.runs[].results[] | select(.level == "error")' trivy-results.sarif)
+            if [ -n "$CRITICAL_OR_HIGH" ]; then
+              echo "### Summary of critical and high Vulnerabilities" >> $GITHUB_STEP_SUMMARY
+              echo "$CRITICAL_OR_HIGH" | jq -r '"\(.message.text) (\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine))\n"' >> $GITHUB_STEP_SUMMARY
+            else
+              echo "No critical or high vulnerabilities found." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "No vulnerabilities found." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  push:
+    name: Push to registry
+    needs: [setup, tests, scan]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+
+    steps:
+      - name: Download docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load docker image
+        run: docker load -i /tmp/docker-image.tar
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3.3.0
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          registry: ghcr.io
+          username: ${{ env.REPOSITORY_OWNER }}
+          password: ${{ env.GITHUB_TOKEN }}
+
+      - name: Docker push
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_BRANCH: ${{ github.ref }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: |
+          docker push ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}
+          if [[ "${{ env.GITHUB_BRANCH }}" == "refs/heads/main" ]]; then
+            docker tag ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }} ghcr.io/${{ env.GITHUB_REPOSITORY }}:latest
+            docker push ghcr.io/${{ env.GITHUB_REPOSITORY }}:latest
+          fi
+
+      - name: Create scan summary
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_BRANCH: ${{ github.ref }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: |
+          echo "## Push summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker image: ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ env.GITHUB_BRANCH }}" == "refs/heads/main" ]]; then
+            echo "- Docker image: ghcr.io/${{ env.GITHUB_REPOSITORY }}:latest" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- Push successful!" >> $GITHUB_STEP_SUMMARY
+
+  release:
+    name: Tag and release
+    needs: [setup, scan, tests]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog file
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: |
+          TEMP_NEW_COMMITS=$(mktemp)
+          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"* %s @${{ env.GITHUB_ACTOR }} ([#%h](https://github.com/${{ env.GITHUB_REPOSITORY }}/commit/%H))" >> $TEMP_NEW_COMMITS
+
+          TEMP_NEW_CHANGELOG=$(mktemp)
+          echo "# Changelog" > $TEMP_NEW_CHANGELOG
+          echo >> $TEMP_NEW_CHANGELOG
+          echo "## [${{ env.TAG_VERSION }}](https://github.com/${{ env.GITHUB_REPOSITORY }}/releases/${{ env.TAG_VERSION }}) ($(date +'%Y-%m-%d'))" >> $TEMP_NEW_CHANGELOG
+          cat $TEMP_NEW_COMMITS >> $TEMP_NEW_CHANGELOG
+
+          if [ -f CHANGELOG.md ]; then
+            echo >> $TEMP_NEW_CHANGELOG
+            sed '/^# Changelog$/s/.*//' CHANGELOG.md >> $TEMP_NEW_CHANGELOG
+          fi
+          mv $TEMP_NEW_CHANGELOG CHANGELOG.md
+
+          changelog=$(cat $TEMP_NEW_COMMITS)
+          echo "changelog<<EOF" >> $GITHUB_ENV
+          echo "$changelog" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Add changelog file to commit
+        run: git add CHANGELOG.md
+
+      - name: Commit changelog file
+        uses: qoomon/actions--create-commit@v1.2.1
+        env:
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        with:
+          message: 'docs: update CHANGELOG.md for release ${{ env.TAG_VERSION }}'
+          skip-empty: true
+
+      - name: Push commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: git push
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2.0.8
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+          CHANGELOG: ${{ env.changelog }}
+        with:
+          token: ${{ env.GITHUB_TOKEN }}
+          tag_name: ${{ env.TAG_VERSION }}
+          prerelease: false
+          draft: false
+          generate_release_notes: true
+          name: Release ${{ env.TAG_VERSION }}
+          body: |
+            <details>
+              <summary>🤖 Autogenerated Conventional Changelog</summary>
+
+              ${{ env.CHANGELOG }}
+            </details>
+
+      - name: Create release summary
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+          CHANGELOG: ${{ env.changelog }}
+        run: |
+          echo "## Release summary" >> $GITHUB_STEP_SUMMARY
+          echo "Release [${{ env.TAG_VERSION }}](https://github.com/${{ env.GITHUB_REPOSITORY }}/releases/${{ env.TAG_VERSION }}) has been created." >> $GITHUB_STEP_SUMMARY
+          echo "### Changelog:" >> $GITHUB_STEP_SUMMARY
+          echo "${{ env.CHANGELOG }}" >> $GITHUB_STEP_SUMMARY
+
+  merge:
+    name: Merge to development
+    needs: [setup, release]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up git
+        env:
+          USER_NAME: github-actions[bot]
+          USER_EMAIL: github-actions[bot]@users.noreply.github.com
+        run: |
+          git config --global user.name "${{ env.USER_NAME }}"
+          git config --global user.email "${{ env.USER_EMAIL }}"
+
+      - name: Merge to development branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git pull origin main
+          git checkout development
+          git merge main
+          git push origin development
+
+      - name: Create merge summary
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          echo "## Merge summary" >> $GITHUB_STEP_SUMMARY
+          echo "Merged main branch into [development](https://github.com/${{ env.GITHUB_REPOSITORY }}/tree/development) branch." >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    name: Deploy to server
+    needs: [setup, push, release]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Add SSH private key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_PROXY_PORT: ${{ secrets.SSH_PROXY_PORT }}
+          SSH_PROXY_HOST: ${{ secrets.SSH_PROXY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ env.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/id_rsa
+          eval $(ssh-agent)
+          ssh-add ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ env.SSH_PROXY_PORT }} -H ${{ env.SSH_PROXY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Add SSH config
+        env:
+          SSH_PRIVATE_HOST: ${{ secrets.SSH_PRIVATE_HOST }}
+          SSH_PRIVATE_USER: ${{ secrets.SSH_PRIVATE_USER }}
+          SSH_PRIVATE_PORT: ${{ secrets.SSH_PRIVATE_PORT }}
+          SSH_PROXY_USER: ${{ secrets.SSH_PROXY_USER }}
+          SSH_PROXY_HOST: ${{ secrets.SSH_PROXY_HOST }}
+          SSH_PROXY_PORT: ${{ secrets.SSH_PROXY_PORT }}
+        run: |
+          echo "Host proxy
+                HostName ${{ env.SSH_PRIVATE_HOST }}
+                User ${{ env.SSH_PRIVATE_USER }}
+                Port ${{ env.SSH_PRIVATE_PORT }}
+                ProxyJump ${{ env.SSH_PROXY_USER }}@${{ env.SSH_PROXY_HOST }}:${{ env.SSH_PROXY_PORT }}
+                StrictHostKeyChecking no
+                UserKnownHostsFile /dev/null
+          " >> ~/.ssh/config
+
+      - name: Create docker context
+        run: |
+          docker context create proxy --docker host=ssh://proxy
+          docker context use proxy
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3.3.0
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          registry: ghcr.io
+          username: ${{ env.REPOSITORY_OWNER }}
+          password: ${{ env.GITHUB_TOKEN }}
+
+      - name: Pull docker image
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: docker pull ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}
+
+      - name: Deploy to server
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          REPO_NAME: ${{ needs.setup.outputs.repo_name }}
+          APPLICATION_URL: ${{ needs.setup.outputs.application_url }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: |
+          if [ "$(docker ps -a -q -f name=${{ env.REPO_NAME }})" ]; then
+            docker rm -f ${{ env.REPO_NAME }}
+          fi
+          if [ ! -z ${{ env.APPLICATION_URL }} ]; then
+            docker run -d --name ${{ env.REPO_NAME }} --network external_network -e VIRTUAL_HOST=$(echo "${{ env.APPLICATION_URL }}" | sed 's|https://||') ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}
+          else
+            docker run -d --name ${{ env.REPO_NAME }} ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}
+          fi
+
+      - name: Remove old docker images
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          for DOCKER_IMAGE_ID in $(docker images -q ghcr.io/${{ env.GITHUB_REPOSITORY }}); do
+            docker rmi -f $DOCKER_IMAGE_ID || true
+          done
+
+      - name: Create deploy summary
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
+        run: |
+          echo "## Deploy summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Deploy ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }} to server successful!" >> $GITHUB_STEP_SUMMARY
+          echo "- Remove old docker images." >> $GITHUB_STEP_SUMMARY
+
+  record:
+    name: Register record in Cloudflare
+    needs: [setup, push, release]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+      url: ${{ needs.setup.outputs.application_url }}
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Get Cloudflare Zone ID for domain
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          APPLICATION_URL: ${{ needs.setup.outputs.application_url }}
+        run: |
+          CLEAN_URL=$(echo "${{ env.APPLICATION_URL }}" | sed -e 's~http[s]*://~~g')
+          DOMAIN=$(echo "$CLEAN_URL" | awk -F. '{print $(NF-1)"."$NF}')
+          SUBDOMAIN=$(echo "$CLEAN_URL" | sed "s/.$DOMAIN//")
+
+          CLOUDFLARE_ZONE_ID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=$DOMAIN" \
+          -H "Authorization: Bearer ${{ env.CLOUDFLARE_API_TOKEN }}" \
+          -H "Content-Type: application/json" | jq -r '.result[0].id')
+
+          echo "CLOUDFLARE_ZONE_ID=$CLOUDFLARE_ZONE_ID" >> $GITHUB_ENV
+          echo "DOMAIN=$DOMAIN" >> $GITHUB_ENV
+          echo "SUBDOMAIN=$SUBDOMAIN" >> $GITHUB_ENV
+
+      - name: Add CNAME record to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ env.CLOUDFLARE_ZONE_ID }}
+          SUBDOMAIN: ${{ env.SUBDOMAIN }}
+          DOMAIN: ${{ env.DOMAIN }}
+          DEPLOY_SERVER: ${{ secrets.DEPLOY_SERVER }}
+          COMMENT: "Automatically created by GitHub Actions workflow for ${{ github.repository }} repository"
+        run: |
+          EXISTING_RECORD=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${{ env.CLOUDFLARE_ZONE_ID }}/dns_records?type=CNAME&name=${{ env.SUBDOMAIN }}.${{ env.DOMAIN }}" \
+          -H "Authorization: Bearer ${{ env.CLOUDFLARE_API_TOKEN }}" \
+          -H "Content-Type: application/json" | jq -r '.result[0]')
+
+          EXISTING_RECORD_ID=$(echo "$EXISTING_RECORD" | jq -r '.id // empty')
+          EXISTING_RECORD_CONTENT=$(echo "$EXISTING_RECORD" | jq -r '.content // empty')
+
+          if [ -n "$EXISTING_RECORD_ID" ]; then
+            echo "PRIMEROOOOOOOOOOO"
+            if [ "$EXISTING_RECORD_CONTENT" != "${{ env.DEPLOY_SERVER }}" ]; then
+              echo "SEGUNDOOOOOOOOOOO"
+              curl -X PUT "https://api.cloudflare.com/client/v4/zones/${{ env.CLOUDFLARE_ZONE_ID }}/dns_records/$EXISTING_RECORD_ID" \
+              -H "Authorization: Bearer ${{ env.CLOUDFLARE_API_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              --data '{
+                "type": "CNAME",
+                "name": "'"${{ env.SUBDOMAIN }}"'.'"${{ env.DOMAIN }}"'",
+                "content": "'"${{ env.DEPLOY_SERVER }}"'",
+                "ttl": 3600,
+                "proxied": true,
+                "comment": "'"${{ env.COMMENT }}"'"
+              }'
+            fi
+          else
+            curl -X POST "https://api.cloudflare.com/client/v4/zones/${{ env.CLOUDFLARE_ZONE_ID }}/dns_records" \
+            -H "Authorization: Bearer ${{ env.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{
+              "type": "CNAME",
+              "name": "'"${{ env.SUBDOMAIN }}"'.'"${{ env.DOMAIN }}"'",
+              "content": "'"${{ env.DEPLOY_SERVER }}"'",
+              "ttl": 3600,
+              "proxied": true,
+              "comment": "'"${{ env.COMMENT }}"'"
+            }'
+          fi
+
+      - name: Create register summary
+        env:
+          SUBDOMAIN: ${{ env.SUBDOMAIN }}
+          DOMAIN: ${{ env.DOMAIN }}
+        run: |
+          echo "## Register summary" >> $GITHUB_STEP_SUMMARY
+          echo "- [${{ env.SUBDOMAIN }}.${{ env.DOMAIN }}](https://${{ env.SUBDOMAIN }}.${{ env.DOMAIN }}) CNAME record has been updated in Cloudflare." >> $GITHUB_STEP_SUMMARY

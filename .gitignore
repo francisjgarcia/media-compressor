@@ -1,0 +1,62 @@
+# Editor and operating system specific files and directories
+*.DS_Store
+*.Thumbs.db
+*.Desktop.ini
+
+# IDE and editor configuration files
+.vscode/
+.idea/
+*.iml
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build tool and dependency generated files and directories
+*.lock
+*.pid
+*.cache
+
+# Build and output directories
+build/
+dist/
+out/
+target/
+*.class
+
+# Environment specific configuration files
+.env
+*.local
+
+# Temporary and cache files
+*.tmp
+*.bak
+*.swp
+*.swo
+*.log
+
+# Sensitive files
+*.pem
+*.key
+*.crt
+
+# Other files and directories
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
+# Previous versions and backup files
+*.bak
+*.old
+*.orig
+
+# Python specific files and directories
+src/tests/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Allowlist local dockerfile
+!Dockerfile.local

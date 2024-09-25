@@ -1,0 +1,37 @@
+---
+name: 🐢 Performance issue
+labels: ["performance"]
+assignees: francisjgarcia
+description: |
+  Use this template to report performance-related issues.
+body:
+  - type: textarea
+    attributes:
+      label: 🐢 Description of the performance issue
+      description: Describe the performance issue you are experiencing.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 📊 Steps to reproduce
+      description: Provide steps or a scenario that leads to the performance issue.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ⚙️ Environment
+      description: Describe the environment (hardware, software, OS) where the performance issue occurs.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 📈 Expected vs Actual Performance
+      description: How did you expect the system to perform, and what are you observing instead?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: ℹ️ Additional information
+      description: Add logs, profiling data, or other information that may help diagnose the issue.
+    validations:
+      required: false

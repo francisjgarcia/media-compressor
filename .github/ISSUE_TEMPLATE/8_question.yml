@@ -1,0 +1,25 @@
+---
+name: ❓ Question
+labels: ["question"]
+assignees: francisjgarcia
+description: |
+  Use this template if you have a question or need help with something.
+body:
+  - type: textarea
+    attributes:
+      label: ❓ Question
+      description: Please describe your question or the information you need help with.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 📝 Background
+      description: Provide any relevant background information or context related to your question.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: ℹ️ Additional information
+      description: Include any other details or context that might help in answering your question.
+    validations:
+      required: false
