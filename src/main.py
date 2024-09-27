@@ -5,9 +5,11 @@ import time
 import signal
 import shutil
 import tempfile
-from pathlib import Path
 import subprocess
+import threading
 
+from pathlib import Path
+from tqdm import tqdm
 from dotenv import load_dotenv
 
 # Load environment variables from the .env file
@@ -103,14 +105,50 @@ def get_video_duration(file_path):
 
 
 # Compress a file using ffmpeg
-def compress_video(input_file, output_file):
+def compress_video(input_file, output_file, duration):
+    # Create a temporary file to receive ffmpeg progress
+    progress_file = tempfile.mktemp(suffix=".progress")
+
+    # ffmpeg command with progress option
     ffmpeg_command = (
         f"ffmpeg -i '{input_file}' -map 0 -c:v libx264 -crf {CRF} "
         f"-preset {PRESET} -c:a copy -c:s copy "
-        "-x264-params log-level=none -loglevel quiet "
-        f"-stats '{output_file}'"
+        f"-progress {progress_file} -stats '{output_file}'"
     )
-    return run_command(ffmpeg_command)
+
+    # Start ffmpeg in a separate thread
+    def run_ffmpeg():
+        run_command(ffmpeg_command)
+
+    ffmpeg_thread = threading.Thread(target=run_ffmpeg)
+    ffmpeg_thread.start()
+
+    # Progress bar
+    with tqdm(total=duration, unit="s", desc="Progress", ncols=80) as pbar:
+        while ffmpeg_thread.is_alive():
+            try:
+                with open(progress_file, "r") as f:
+                    lines = f.readlines()
+
+                # Search for the line that indicates elapsed time
+                for line in lines:
+                    if "out_time_ms" in line:
+                        # Extract elapsed time in milliseconds
+                        elapsed_time = int(
+                            line.split("=")[1].strip()
+                        ) / 1000000
+                        pbar.n = elapsed_time  # Update progress bar
+                        pbar.refresh()  # Refresh the bar
+
+                time.sleep(1)
+            except FileNotFoundError:
+                continue
+
+    ffmpeg_thread.join()
+
+    # Remove the temporary progress file
+    if os.path.exists(progress_file):
+        os.remove(progress_file)
 
 
 # Extract season and chapter from the filename
@@ -133,80 +171,30 @@ def process_chapter(file_path,
     season, chapter = extract_season_and_chapter(file_name)
 
     if season and chapter:
-        # Prepare output path
         output_file = os.path.join(
             output_dir, series_name, series_season, file_name
         )
         output_dir = os.path.dirname(output_file)
         os.makedirs(output_dir, exist_ok=True)
 
-        # Check if the file is already compressed
         if os.path.exists(output_file):
             print(
-                f"\nThe file '{output_file}' "
-                "has already been compressed; skipping."
+                f"\nThe file '{output_file}' has already "
+                "been compressed; skipping."
             )
             return
 
         print(
-            f"\nCompressing chapter {chapter} "
-            f"of the {total_chapters} in "
-            f"season {series_season} "
-            f"of the series '{series_name}'."
+            f"\nCompressing chapter {chapter} of the {total_chapters} "
+            f"in season {series_season} of the series '{series_name}'."
         )
 
-        # Get video duration
-        duration = get_video_duration(file_path)
-        if duration:
-            duration_minutes = duration / 60
-            if duration_minutes > 60:
-                duration_hours = duration_minutes / 60
-                print(f"Chapter duration: {duration_hours:.2f} hours.\n")
-            else:
-                print(
-                    f"Chapter duration: {duration_minutes:.2f} "
-                    "minutes.\n"
-                )
-        else:
-            print(
-                "Could not obtain the duration of the file, "
-                "continuing with compression."
-            )
+        # Compress the video with a progress bar
+        compress_video(file_path, output_file, get_video_duration(file_path))
 
-        # Start timer
-        start_time = time.time()
-
-        # Compress file
-        compress_result = compress_video(file_path, output_file)
-        if compress_result is None:
-            print(
-                f"Error during compression of '{file_path}', "
-                "skipping the file."
-            )
-            return
-
-        # End timer and display duration
-        elapsed_time = time.time() - start_time
         print(
             f"Compression of chapter '{season}{chapter}' "
             f"from the series '{series_name}' completed."
-        )
-
-        if elapsed_time >= 3600:
-            hours = int(elapsed_time // 3600)
-            minutes = int((elapsed_time % 3600) // 60)
-            print(
-                f"Compression duration: {hours} hours "
-                f"and {minutes} minutes."
-            )
-        else:
-            minutes = int(elapsed_time // 60)
-            print(f"Compression duration: {minutes} minutes.")
-
-    else:
-        print(
-            f"Could not extract the chapter and season "
-            f"from the file '{file_name}', skipping."
         )
 
 
@@ -242,15 +230,11 @@ def process_movies(input_dir, output_dir):
             movie_path = os.path.join(dirpath, movie_dir)
             movie_name = os.path.basename(movie_path)
 
-            # Look for .mkv file inside the movie folder
-            movie_file = next((
-                f for f in os.listdir(movie_path) if f.endswith('.mkv')), None
-            )
+            movie_file = next(
+                (f for f in os.listdir(movie_path) if f.endswith('.mkv')),
+                None)
             if not movie_file:
-                print(
-                    f"No .mkv file found in '{movie_path}'. "
-                    "Skipping."
-                )
+                print(f"No .mkv file found in '{movie_path}'. Skipping.")
                 continue
 
             input_file = os.path.join(movie_path, movie_file)
@@ -259,7 +243,6 @@ def process_movies(input_dir, output_dir):
 
             os.makedirs(output_dir, exist_ok=True)
 
-            # Check if the movie has already been compressed
             if os.path.exists(output_file):
                 print(
                     f"The movie '{movie_name}' has already been compressed. "
@@ -269,55 +252,12 @@ def process_movies(input_dir, output_dir):
 
             print(f"Compressing the movie '{movie_name}'...")
 
-            # Get the duration of the movie
-            duration = get_video_duration(input_file)
-            if duration:
-                duration_minutes = duration / 60
-                if duration_minutes > 60:
-                    duration_hours = duration_minutes / 60
-                    print(
-                        f"Movie duration: {duration_hours:.2f} "
-                        "hours."
-                    )
-                else:
-                    print(
-                        f"Movie duration: {duration_minutes:.2f} "
-                        "minutes."
-                    )
-            else:
-                print(f"Could not obtain the duration of '{movie_name}'.")
-
-            # Start timer
-            start_time = time.time()
-
-            # Compress the movie
-            compress_result = compress_video(input_file, output_file)
-            if compress_result is None:
-                print(
-                    f"Error during compression of '{movie_name}', "
-                    "skipping the movie."
-                )
-                continue
-
-            # End timer and display duration
-            elapsed_time = time.time() - start_time
-            print(
-                "\nCompression of "
-                f"the movie '{movie_name}' completed."
+            # Compress the movie with a progress bar
+            compress_video(
+                input_file, output_file, get_video_duration(input_file)
             )
 
-            if elapsed_time >= 3600:
-                hours = int(elapsed_time // 3600)
-                minutes = int((elapsed_time % 3600) // 60)
-                print(
-                    f"Compression duration: {hours} hours "
-                    f"and {minutes} minutes."
-                )
-            else:
-                minutes = int(elapsed_time // 60)
-                print(f"Compression duration: {minutes} minutes.")
-
-    print("\nAll movies have been fully compressed.")
+            print(f"\nCompression of the movie '{movie_name}' completed.")
 
 
 # Main function to decide what to compress based on the argument
