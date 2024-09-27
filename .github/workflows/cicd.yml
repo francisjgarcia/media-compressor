@@ -208,7 +208,7 @@ jobs:
           GITHUB_WORKSPACE: ${{ github.workspace }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
-        run: docker run --rm --user root -v ${{ env.GITHUB_WORKSPACE }}/tests:/app/tests ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }} sh -c "pip install flake8 > /dev/null 2>&1 && flake8" > result_flake8.log
+        run: docker run --rm --user root --entrypoint /bin/sh -v ${{ env.GITHUB_WORKSPACE }}/tests:/app/tests ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }} -c "pip install flake8 > /dev/null 2>&1 && flake8" > result_flake8.log
 
       - name: Run pytest
         if: always()
@@ -218,7 +218,7 @@ jobs:
           TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
         run: |
           if ls tests/*.py 1> /dev/null 2>&1; then
-            docker run --rm --user root -v ${{ env.GITHUB_WORKSPACE }}/tests:/app/tests ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }} sh -c "pip install pytest > /dev/null 2>&1 && pytest" > result_pytest.log
+            docker run --rm --user root --entrypoint /bin/sh -v ${{ env.GITHUB_WORKSPACE }}/tests:/app/tests ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }} -c "pip install pytest > /dev/null 2>&1 && pytest" > result_pytest.log
           else
             echo "No tests found, skipping pytest." > result_pytest.log
           fi
