@@ -224,7 +224,7 @@ def process_series(input_dir, output_dir):
 
 
 # Process movies
-def process_movies(input_dir, output_dir):
+def process_movies(input_dir, output_dir_base):
     for dirpath, dirnames, _ in os.walk(input_dir):
         for movie_dir in dirnames:
             movie_path = os.path.join(dirpath, movie_dir)
@@ -238,7 +238,7 @@ def process_movies(input_dir, output_dir):
                 continue
 
             input_file = os.path.join(movie_path, movie_file)
-            output_dir = os.path.join(output_dir, movie_name)
+            output_dir = os.path.join(output_dir_base, movie_name)
             output_file = os.path.join(output_dir, f"{movie_name}.mkv")
 
             os.makedirs(output_dir, exist_ok=True)
