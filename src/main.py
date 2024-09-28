@@ -107,16 +107,36 @@ def get_video_duration(file_path):
     return None
 
 
+# Adjust video dimensions to be divisible by 2
+def adjust_video_dimensions(input_file):
+    command = (
+        f"ffprobe -v error -select_streams v:0 "
+        f"-show_entries stream=width,height "
+        f"-of csv=p=0:s=x {shlex.quote(input_file)}"
+    )
+    dimensions = run_command(command)
+    if dimensions:
+        width, height = map(int, dimensions.split('x'))
+        new_width = width if width % 2 == 0 else width - 1
+        new_height = height if height % 2 == 0 else height - 1
+        return new_width, new_height
+    return None, None
+
+
 # Compress a file using ffmpeg
 def compress_video(input_file, output_file, duration):
     # Create a temporary file to receive ffmpeg progress
     progress_file = tempfile.mktemp(suffix=".progress")
+    width, height = adjust_video_dimensions(input_file)
+    scale_filter = f"-vf scale={width}:{height}" if width and height else ""
 
     # ffmpeg command with progress option
     ffmpeg_command = (
         f"ffmpeg -i {shlex.quote(input_file)} -map 0 -c:v libx264 -crf {CRF} "
-        f"-preset {PRESET} -c:a copy -c:s copy "
-        f"-progress {shlex.quote(progress_file)} -stats {shlex.quote(output_file)}"
+        f"-preset {PRESET} -c:a copy -c:s copy -probesize 50M "
+        f"-analyzeduration 100M {scale_filter} "
+        f"-progress {shlex.quote(progress_file)} "
+        f"-stats {shlex.quote(output_file)}"
     )
 
     # Start ffmpeg in a separate thread
@@ -193,12 +213,16 @@ def process_chapter(file_path,
         )
 
         # Compress the video with a progress bar
-        compress_video(file_path, output_file, get_video_duration(file_path))
-
-        print(
-            f"Compression of chapter '{season}{chapter}' "
-            f"from the series '{series_name}' completed."
-        )
+        try:
+            compress_video(
+                file_path, output_file, get_video_duration(file_path)
+            )
+            print(
+                f"\nCompression of chapter '{season}{chapter}' "
+                f"from the series '{series_name}' completed."
+            )
+        except Exception as e:
+            print(f"\nError compressing chapter '{season}{chapter}': {e}")
 
 
 # Process series
@@ -253,14 +277,16 @@ def process_movies(input_dir, output_dir_base):
                 )
                 continue
 
-            print(f"Compressing the movie '{movie_name}'...")
+            print(f"\nCompressing the movie '{movie_name}'...")
 
             # Compress the movie with a progress bar
-            compress_video(
-                input_file, output_file, get_video_duration(input_file)
-            )
-
-            print(f"\nCompression of the movie '{movie_name}' completed.")
+            try:
+                compress_video(
+                    input_file, output_file, get_video_duration(input_file)
+                )
+                print(f"\nCompression of the movie '{movie_name}' completed.")
+            except Exception as e:
+                print(f"\nError compressing movie '{movie_name}': {e}")
 
 
 # Main function to decide what to compress based on the argument
