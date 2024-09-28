@@ -175,25 +175,29 @@ def compress_video(input_file, output_file, duration):
 
 
 # Extract season and chapter from the filename
-def extract_season_and_chapter(file_name):
-    match = re.search(r"(\d+x)(\d+)", file_name)
+def extract_season_and_chapters(file_name):
+    match = re.search(r"(\d+x)([\d-]+)", file_name)
     if match:
         season = match.group(1)
-        chapter = match.group(2)
-        return season, chapter
-    return None, None
+        chapters_range = match.group(2)
+
+        # Parse chapters if they are in a range like 01-02-03 or 04-05
+        chapter_list = []
+        for chapter_part in chapters_range.split('-'):
+            chapter_list.append(chapter_part.zfill(2))  # Ensure two digits
+
+        return season, chapter_list
+    return None, []
 
 
 # Process a chapter of a series
-def process_chapter(file_path,
-                    series_name,
-                    series_season,
-                    total_chapters,
-                    output_dir):
+def process_chapter(file_path, series_name, series_season,
+                    total_chapters, output_dir):
     file_name = os.path.basename(file_path)
-    season, chapter = extract_season_and_chapter(file_name)
+    season, chapter_list = extract_season_and_chapters(file_name)
 
-    if season and chapter:
+    if season and chapter_list:
+        # Use first chapter for output file name
         output_file = os.path.join(
             output_dir, series_name, series_season, file_name
         )
@@ -203,26 +207,30 @@ def process_chapter(file_path,
         if os.path.exists(output_file):
             print(
                 f"\nThe file '{output_file}' has already "
-                "been compressed; skipping."
-            )
+                "been compressed; skipping.")
             return
 
-        print(
-            f"\nCompressing chapter {chapter} of the {total_chapters} "
-            f"in season {series_season} of the series '{series_name}'."
-        )
+        # Indicate whether to use "chapter" or "chapters"
+        chapters = ', '.join(chapter_list)
+        chapter_word = "chapter" if len(chapter_list) == 1 else "chapters"
+        total_chapter_word = "chapter" if total_chapters == 1 else "chapters"
 
-        # Compress the video with a progress bar
+        print(
+            f"\nCompressing {chapter_word} {chapters} "
+            f"of season {series_season} ({total_chapters} "
+            f"{total_chapter_word} total) in series '{series_name}'.")
+
+        # Compress the video with progress bar
         try:
             compress_video(
-                file_path, output_file, get_video_duration(file_path)
-            )
+                file_path, output_file, get_video_duration(file_path))
             print(
-                f"\nCompression of chapter '{season}{chapter}' "
-                f"from the series '{series_name}' completed."
-            )
+                f"\nCompression of {chapter_word} '{season}{chapters}' "
+                f"from the series '{series_name}' completed.")
         except Exception as e:
-            print(f"\nError compressing chapter '{season}{chapter}': {e}")
+            print(
+                f"\nError compressing {chapter_word} "
+                f"'{season}{chapters}': {e}")
 
 
 # Process series
@@ -232,14 +240,20 @@ def process_series(input_dir, output_dir):
             if file.endswith(".mkv"):
                 file_path = os.path.join(root, file)
                 path_parts = Path(file_path).parts
+
                 if len(path_parts) >= 3:
                     series_name = path_parts[-3]  # Series name
                     series_season = path_parts[-2]  # Season
-                    total_chapters = len(
-                        [f for f in os.listdir(
-                            os.path.join(input_dir, series_name, series_season)
-                        ) if f.endswith(".mkv")]
+
+                    # Count real number of chapters
+                    total_chapters = 0
+                    season_dir = os.path.join(
+                        input_dir, series_name, series_season
                     )
+                    for f in os.listdir(season_dir):
+                        if f.endswith(".mkv"):
+                            _, chapters = extract_season_and_chapters(f)
+                            total_chapters += len(chapters)
 
                     process_chapter(file_path,
                                     series_name,
