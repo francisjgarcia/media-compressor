@@ -7,6 +7,7 @@ import shutil
 import tempfile
 import subprocess
 import threading
+import shlex
 
 from pathlib import Path
 from tqdm import tqdm
@@ -47,13 +48,13 @@ def mount_smb_readonly(smb_path, username, password, read_only=True):
 
     if read_only:
         mount_cmd = (
-            f"mount -t cifs {smb_path} {temp_dir} "
-            f"-o credentials={credentials_file},ro"
+            f"mount -t cifs {shlex.quote(smb_path)} {shlex.quote(temp_dir)} "
+            f"-o credentials={shlex.quote(credentials_file)},ro"
         )
     else:
         mount_cmd = (
-            f"mount -t cifs {smb_path} {temp_dir} "
-            f"-o credentials={credentials_file}"
+            f"mount -t cifs {shlex.quote(smb_path)} {shlex.quote(temp_dir)} "
+            f"-o credentials={shlex.quote(credentials_file)}"
         )
 
     try:
@@ -72,7 +73,9 @@ def mount_smb_readonly(smb_path, username, password, read_only=True):
 # Unmount and delete temporary folder
 def unmount_and_cleanup(temp_dir):
     try:
-        subprocess.run(f"umount {temp_dir}", shell=True, check=True)
+        subprocess.run(
+            f"umount {shlex.quote(temp_dir)}", shell=True, check=True
+        )
         shutil.rmtree(temp_dir)  # Remove the temporary directory
         print(f"Folder {temp_dir} unmounted and deleted")
     except subprocess.CalledProcessError as e:
@@ -96,7 +99,7 @@ def run_command(command):
 def get_video_duration(file_path):
     command = (
         "ffprobe -v error -show_entries format=duration "
-        f"-of default=noprint_wrappers=1:nokey=1 '{file_path}'"
+        f"-of default=noprint_wrappers=1:nokey=1 {shlex.quote(file_path)}"
     )
     duration_str = run_command(command)
     if duration_str:
@@ -111,9 +114,9 @@ def compress_video(input_file, output_file, duration):
 
     # ffmpeg command with progress option
     ffmpeg_command = (
-        f"ffmpeg -i '{input_file}' -map 0 -c:v libx264 -crf {CRF} "
+        f"ffmpeg -i {shlex.quote(input_file)} -map 0 -c:v libx264 -crf {CRF} "
         f"-preset {PRESET} -c:a copy -c:s copy "
-        f"-progress {progress_file} -stats '{output_file}'"
+        f"-progress {shlex.quote(progress_file)} -stats {shlex.quote(output_file)}"
     )
 
     # Start ffmpeg in a separate thread
