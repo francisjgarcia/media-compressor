@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.2.2](https://github.com/francisjgarcia/media-compressor/releases/v1.2.2) (2024-09-28)
+* [patch] Merge pull request #16 from francisjgarcia/8-progress-counter-exceeds-total-episode-count-when-multiple-episodes-are-in-a-single-file @francisjgarcia ([#6c12dfc](https://github.com/francisjgarcia/media-compressor/commit/6c12dfc61838ed7a2b0019b5ac382cf49ef08ad9))
+* bug(series): Progress counter exceeds total episode count when multiple episodes are in a single file @francisjgarcia ([#1c6d574](https://github.com/francisjgarcia/media-compressor/commit/1c6d574f8515bde4e349e11c0865cefc7e3e5149))
+
+
 ## [v1.2.1](https://github.com/francisjgarcia/media-compressor/releases/v1.2.1) (2024-09-28)
 * [patch] Merge pull request #15 from francisjgarcia/bug/ffprobe_duration @francisjgarcia ([#fa6c306](https://github.com/francisjgarcia/media-compressor/commit/fa6c306c59ad53160ad034096fff6f6fe08c9a09))
 * bug(files): Fix bug error for ffmpeg duration @francisjgarcia ([#1266783](https://github.com/francisjgarcia/media-compressor/commit/12667830c2ccca0e1be26ac049a9ef761153e9a4))
