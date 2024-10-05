@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.3.1](https://github.com/francisjgarcia/media-compressor/releases/v1.3.1) (2024-10-05)
+* Merge pull request #19 from francisjgarcia/bug/utf8_shared_folder [patch] @francisjgarcia ([#30d978e](https://github.com/francisjgarcia/media-compressor/commit/30d978e4d59efd917c0bc9efd7150049eb1f7377))
+* bug(shared folder): fix utf8 characters of shared folders and rename mount function @francisjgarcia ([#9ae1c61](https://github.com/francisjgarcia/media-compressor/commit/9ae1c615e81259e377694c5c50281a256b6beec5))
+
+
 ## [v1.3.0](https://github.com/francisjgarcia/media-compressor/releases/v1.3.0) (2024-10-05)
 * Merge pull request #18 from francisjgarcia/17-enhance-media-compressor-script-with-argparse-support @francisjgarcia ([#3da5dae](https://github.com/francisjgarcia/media-compressor/commit/3da5dae956d59cd996dda1bb49f8e78b6737783c))
 * style: fix flake8 violations for line length and encoding @francisjgarcia ([#51bb7d3](https://github.com/francisjgarcia/media-compressor/commit/51bb7d354b650aa97b34c1701c8cd9a4a91615ad))
