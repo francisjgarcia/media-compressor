@@ -260,7 +260,10 @@ def process_series(input_dir, output_dir, name=None, list_file=None):
                     # Check if this series should be processed
                     if name and series_name != name:
                         continue
-                    if series_to_process and series_name not in series_to_process:
+                    if (
+                        series_to_process and
+                        series_name not in series_to_process
+                    ):
                         continue
 
                     # Count real number of chapters
@@ -344,16 +347,26 @@ def process_movies(input_dir, output_dir_base, name=None, list_file=None):
 # Main function to decide what to compress based on the argument
 def main():
     try:
-        parser = argparse.ArgumentParser(description="Compress series and movies from SMB shares using FFmpeg.")
+        parser = argparse.ArgumentParser(
+            description=(
+                "Compress series and movies from SMB shares using "
+                "FFmpeg."
+            )
+        )
         parser.add_argument("type", choices=["series", "movies"],
                             help="Choose between 'series' or 'movies'")
-        parser.add_argument("--name", help="Specify the name of the series/movie")
-        parser.add_argument("--list", help="Specify a list of series/movies")
+        parser.add_argument("--name",
+                            help="Specify the name of the series/movie")
+        parser.add_argument("--list",
+                            help="Specify a list of series/movies")
         args = parser.parse_args()
 
         # Check if both --name and --list are specified
         if args.name and args.list:
-            print("Error: You cannot specify both --name and --list at the same time.")
+            print(
+                "Error: You cannot specify both "
+                "--name and --list at the same time."
+            )
             sys.exit(1)
 
         # Register the SIGINT (Ctrl+C) signal handler
