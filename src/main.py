@@ -116,12 +116,26 @@ def adjust_video_dimensions(input_file):
         f"-of csv=p=0:s=x {shlex.quote(input_file)}"
     )
     dimensions = run_command(command)
-    if dimensions:
+
+    # Handling empty or incorrect ffprobe output
+    if not dimensions:
+        print(
+            "Warning: Could not retrieve dimensions "
+            f"for file '{input_file}'."
+        )
+        return None, None
+
+    # Remove any extra characters, such as a trailing "x"
+    dimensions = dimensions.strip().rstrip('x')
+
+    try:
         width, height = map(int, dimensions.split('x'))
         new_width = width if width % 2 == 0 else width - 1
         new_height = height if height % 2 == 0 else height - 1
         return new_width, new_height
-    return None, None
+    except ValueError as e:
+        print(f"Error parsing dimensions for file '{input_file}': {e}")
+        return None, None
 
 
 # Compress a file using ffmpeg
@@ -325,8 +339,8 @@ def process_movies(input_dir, output_dir_base, name=None, list_file=None):
 
             if os.path.exists(output_file):
                 print(
-                    f"The movie '{movie_name}' has already been compressed. "
-                    "Skipping."
+                    f"\nThe movie '{movie_name}' has already "
+                    "been compressed. Skipping."
                 )
                 continue
 
@@ -373,7 +387,7 @@ def main():
         signal.signal(signal.SIGINT, signal_handler)
 
         if args.type == "series":
-            print("Processing series...")
+            print("Processing series...\n")
             input_dir = mount_smb(
                 SMB_INPUT_SERIES, SMB_USERNAME, SMB_PASSWORD, True
             )
@@ -387,7 +401,7 @@ def main():
                 unmount_and_cleanup(input_dir)
                 unmount_and_cleanup(output_dir)
         elif args.type == "movies":
-            print("Processing movies...")
+            print("Processing movies...\n")
             input_dir = mount_smb(
                 SMB_INPUT_MOVIES, SMB_USERNAME, SMB_PASSWORD, True
             )
