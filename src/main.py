@@ -8,6 +8,7 @@ import tempfile
 import subprocess
 import threading
 import shlex
+import argparse
 
 from pathlib import Path
 from tqdm import tqdm
@@ -234,7 +235,18 @@ def process_chapter(file_path, series_name, series_season,
 
 
 # Process series
-def process_series(input_dir, output_dir):
+def process_series(input_dir, output_dir, name=None, list_file=None):
+    series_to_process = []
+
+    # Si se pasa una lista, cargarla
+    if list_file:
+        try:
+            with open(list_file, 'r') as f:
+                series_to_process = [line.strip() for line in f.readlines()]
+        except FileNotFoundError:
+            print(f"Error: Could not find the file '{list_file}'.")
+            sys.exit(1)
+
     for root, _, files in os.walk(input_dir):
         for file in files:
             if file.endswith(".mkv"):
@@ -245,11 +257,21 @@ def process_series(input_dir, output_dir):
                     series_name = path_parts[-3]  # Series name
                     series_season = path_parts[-2]  # Season
 
+                    # Check if this series should be processed
+                    if name and series_name != name:
+                        continue
+                    if (
+                        series_to_process and
+                        series_name not in series_to_process
+                    ):
+                        continue
+
                     # Count real number of chapters
                     total_chapters = 0
                     season_dir = os.path.join(
                         input_dir, series_name, series_season
                     )
+
                     for f in os.listdir(season_dir):
                         if f.endswith(".mkv"):
                             _, chapters = extract_season_and_chapters(f)
@@ -261,16 +283,33 @@ def process_series(input_dir, output_dir):
                                     total_chapters,
                                     output_dir)
 
-    print("\nAll series have been fully compressed.")
+    print("\nAll series have been fully compressed.\n")
 
 
 # Process movies
-def process_movies(input_dir, output_dir_base):
+def process_movies(input_dir, output_dir_base, name=None, list_file=None):
+    movies_to_process = []
+
+    # If a list is passed, load it
+    if list_file:
+        try:
+            with open(list_file, 'r') as f:
+                movies_to_process = [line.strip() for line in f.readlines()]
+        except FileNotFoundError:
+            print(f"Error: Could not find the file '{list_file}'.")
+            sys.exit(1)
+
     for dirpath, dirnames, _ in os.walk(input_dir):
         for movie_dir in dirnames:
-            movie_path = os.path.join(dirpath, movie_dir)
-            movie_name = os.path.basename(movie_path)
+            movie_name = os.path.basename(movie_dir)
 
+            # Check if this movie should be processed
+            if name and movie_name != name:
+                continue
+            if movies_to_process and movie_name not in map(movies_to_process):
+                continue
+
+            movie_path = os.path.join(dirpath, movie_dir)
             movie_file = next(
                 (f for f in os.listdir(movie_path) if f.endswith('.mkv')),
                 None)
@@ -302,20 +341,38 @@ def process_movies(input_dir, output_dir_base):
             except Exception as e:
                 print(f"\nError compressing movie '{movie_name}': {e}")
 
+    print("\nAll movies have been fully compressed.\n")
+
 
 # Main function to decide what to compress based on the argument
 def main():
     try:
-        if len(sys.argv) != 2:
-            print("Usage: python media_compressor.py [series|movies]")
-            sys.exit(1)
+        parser = argparse.ArgumentParser(
+            description=(
+                "Compress series and movies from SMB shares using "
+                "FFmpeg."
+            )
+        )
+        parser.add_argument("type", choices=["series", "movies"],
+                            help="Choose between 'series' or 'movies'")
+        parser.add_argument("--name",
+                            help="Specify the name of the series/movie")
+        parser.add_argument("--list",
+                            help="Specify a list of series/movies")
+        args = parser.parse_args()
 
-        task = sys.argv[1].lower()
+        # Check if both --name and --list are specified
+        if args.name and args.list:
+            print(
+                "Error: You cannot specify both "
+                "--name and --list at the same time."
+            )
+            sys.exit(1)
 
         # Register the SIGINT (Ctrl+C) signal handler
         signal.signal(signal.SIGINT, signal_handler)
 
-        if task == "series":
+        if args.type == "series":
             print("Processing series...")
             input_dir = mount_smb_readonly(
                 SMB_INPUT_SERIES, SMB_USERNAME, SMB_PASSWORD, True
@@ -324,10 +381,12 @@ def main():
                 SMB_OUTPUT_SERIES, SMB_USERNAME, SMB_PASSWORD, False
             )
             if input_dir and output_dir:
-                process_series(input_dir, output_dir)
+                process_series(
+                    input_dir, output_dir, name=args.name, list_file=args.list
+                )
                 unmount_and_cleanup(input_dir)
                 unmount_and_cleanup(output_dir)
-        elif task == "movies":
+        elif args.type == "movies":
             print("Processing movies...")
             input_dir = mount_smb_readonly(
                 SMB_INPUT_MOVIES, SMB_USERNAME, SMB_PASSWORD, True
@@ -336,12 +395,11 @@ def main():
                 SMB_OUTPUT_MOVIES, SMB_USERNAME, SMB_PASSWORD, False
             )
             if input_dir and output_dir:
-                process_movies(input_dir, output_dir)
+                process_movies(
+                    input_dir, output_dir, name=args.name, list_file=args.list
+                )
                 unmount_and_cleanup(input_dir)
                 unmount_and_cleanup(output_dir)
-        else:
-            print("Invalid argument. Use 'series' or 'movies'.")
-            sys.exit(1)
     except KeyboardInterrupt:
         print("\n\nThe process was interrupted by the user. Exiting...")
 

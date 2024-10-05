@@ -60,3 +60,6 @@ __pycache__/
 
 # Allowlist local dockerfile
 !Dockerfile.local
+
+# Ignore series or movie compression list
+list.txt

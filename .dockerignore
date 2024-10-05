@@ -39,3 +39,6 @@ out
 # Ignore container configuration files
 docker/compose.yml
 docker/Dockerfile
+
+# Ignore series or movie compression list
+list.txt
