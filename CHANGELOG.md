@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.3.0](https://github.com/francisjgarcia/media-compressor/releases/v1.3.0) (2024-10-05)
+* Merge pull request #18 from francisjgarcia/17-enhance-media-compressor-script-with-argparse-support @francisjgarcia ([#3da5dae](https://github.com/francisjgarcia/media-compressor/commit/3da5dae956d59cd996dda1bb49f8e78b6737783c))
+* style: fix flake8 violations for line length and encoding @francisjgarcia ([#51bb7d3](https://github.com/francisjgarcia/media-compressor/commit/51bb7d354b650aa97b34c1701c8cd9a4a91615ad))
+* feat: Enhance media compressor script with argparse support @francisjgarcia ([#a5b0c32](https://github.com/francisjgarcia/media-compressor/commit/a5b0c32299c3e13d7e853e81d17172ed4fedc290))
+
+
 ## [v1.2.2](https://github.com/francisjgarcia/media-compressor/releases/v1.2.2) (2024-09-28)
 * [patch] Merge pull request #16 from francisjgarcia/8-progress-counter-exceeds-total-episode-count-when-multiple-episodes-are-in-a-single-file @francisjgarcia ([#6c12dfc](https://github.com/francisjgarcia/media-compressor/commit/6c12dfc61838ed7a2b0019b5ac382cf49ef08ad9))
 * bug(series): Progress counter exceeds total episode count when multiple episodes are in a single file @francisjgarcia ([#1c6d574](https://github.com/francisjgarcia/media-compressor/commit/1c6d574f8515bde4e349e11c0865cefc7e3e5149))
