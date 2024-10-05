@@ -28,11 +28,11 @@ PRESET = os.getenv("PRESET")
 
 # Handle interruption with Ctrl+C
 def signal_handler(sig, frame):
-    print(
-        "\n\nInterruption detected. "
-        "Exiting the program safely..."
-    )
-    sys.exit(0)
+    global interrupted
+    interrupted = True
+    print("\n\nInterruption detected. Stopping compression safely...")
+    # FFmpeg will be stopped gracefully with loglevel quiet
+    return
 
 
 # Mount SMB folder
