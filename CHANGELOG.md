@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.3.2](https://github.com/francisjgarcia/media-compressor/releases/v1.3.2) (2024-10-05)
+* Merge pull request #20 from francisjgarcia/bug/video_dimensions_x_error [patch] @francisjgarcia ([#8023137](https://github.com/francisjgarcia/media-compressor/commit/8023137915d4b33896fb2af3120b8819b67a1ec4))
+* fix(signal-handling): suppress ffmpeg errors on Ctrl + C interruption @francisjgarcia ([#364bbc2](https://github.com/francisjgarcia/media-compressor/commit/364bbc22db08a3727bddb3fb7400ed6c688e6b68))
+* fix(video-dimensions): handle extra 'x' in video resolution parsing @francisjgarcia ([#14332c0](https://github.com/francisjgarcia/media-compressor/commit/14332c07f43583f1e5081edbee41ec367b02771f))
+
+
 ## [v1.3.1](https://github.com/francisjgarcia/media-compressor/releases/v1.3.1) (2024-10-05)
 * Merge pull request #19 from francisjgarcia/bug/utf8_shared_folder [patch] @francisjgarcia ([#30d978e](https://github.com/francisjgarcia/media-compressor/commit/30d978e4d59efd917c0bc9efd7150049eb1f7377))
 * bug(shared folder): fix utf8 characters of shared folders and rename mount function @francisjgarcia ([#9ae1c61](https://github.com/francisjgarcia/media-compressor/commit/9ae1c615e81259e377694c5c50281a256b6beec5))
