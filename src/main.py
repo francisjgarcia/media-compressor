@@ -35,8 +35,8 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 
-# Mount SMB folder as read-only
-def mount_smb_readonly(smb_path, username, password, read_only=True):
+# Mount SMB folder
+def mount_smb(smb_path, username, password, read_only=True):
     temp_dir = tempfile.mkdtemp()  # Create a temporary directory
     # Create a temporary credentials file
     credentials_file = tempfile.mktemp(suffix='.credentials')
@@ -50,12 +50,12 @@ def mount_smb_readonly(smb_path, username, password, read_only=True):
     if read_only:
         mount_cmd = (
             f"mount -t cifs {shlex.quote(smb_path)} {shlex.quote(temp_dir)} "
-            f"-o credentials={shlex.quote(credentials_file)},ro"
+            f"-o credentials={shlex.quote(credentials_file)},iocharset=utf8,ro"
         )
     else:
         mount_cmd = (
             f"mount -t cifs {shlex.quote(smb_path)} {shlex.quote(temp_dir)} "
-            f"-o credentials={shlex.quote(credentials_file)}"
+            f"-o credentials={shlex.quote(credentials_file)},iocharset=utf8"
         )
 
     try:
@@ -374,10 +374,10 @@ def main():
 
         if args.type == "series":
             print("Processing series...")
-            input_dir = mount_smb_readonly(
+            input_dir = mount_smb(
                 SMB_INPUT_SERIES, SMB_USERNAME, SMB_PASSWORD, True
             )
-            output_dir = mount_smb_readonly(
+            output_dir = mount_smb(
                 SMB_OUTPUT_SERIES, SMB_USERNAME, SMB_PASSWORD, False
             )
             if input_dir and output_dir:
@@ -388,10 +388,10 @@ def main():
                 unmount_and_cleanup(output_dir)
         elif args.type == "movies":
             print("Processing movies...")
-            input_dir = mount_smb_readonly(
+            input_dir = mount_smb(
                 SMB_INPUT_MOVIES, SMB_USERNAME, SMB_PASSWORD, True
             )
-            output_dir = mount_smb_readonly(
+            output_dir = mount_smb(
                 SMB_OUTPUT_MOVIES, SMB_USERNAME, SMB_PASSWORD, False
             )
             if input_dir and output_dir:
