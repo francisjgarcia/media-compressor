@@ -320,7 +320,7 @@ def process_movies(input_dir, output_dir_base, name=None, list_file=None):
             # Check if this movie should be processed
             if name and movie_name != name:
                 continue
-            if movies_to_process and movie_name not in map(movies_to_process):
+            if movies_to_process and movie_name not in movies_to_process:
                 continue
 
             movie_path = os.path.join(dirpath, movie_dir)
