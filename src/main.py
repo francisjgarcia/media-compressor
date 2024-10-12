@@ -222,7 +222,8 @@ def process_chapter(file_path, series_name, series_season,
         if os.path.exists(output_file):
             print(
                 f"\nThe file '{output_file}' has already "
-                "been compressed; skipping.")
+                "been compressed; skipping."
+            )
             return
 
         # Indicate whether to use "chapter" or "chapters"
@@ -233,26 +234,58 @@ def process_chapter(file_path, series_name, series_season,
         print(
             f"\nCompressing {chapter_word} {chapters} "
             f"of season {series_season} ({total_chapters} "
-            f"{total_chapter_word} total) in series '{series_name}'.")
+            f"{total_chapter_word} total) in series '{series_name}'."
+        )
+
+        # Get original file size
+        original_size = os.path.getsize(file_path)
 
         # Compress the video with progress bar
         try:
             compress_video(
-                file_path, output_file, get_video_duration(file_path))
+                file_path, output_file, get_video_duration(file_path)
+            )
+
+            # Get new file size
+            new_size = os.path.getsize(output_file)
+
+            # Calculate reduction
+            reduction = (
+                ((original_size - new_size) / original_size) * 100
+                if original_size > 0 else 0
+            )
+
+            original_size_display = (
+                f"{original_size / (1024 * 1024):.2f} MB"
+                if original_size < 1024 * (1024 * 1024)
+                else f"{original_size / (1024 * 1024 * 1024):.2f} GB"
+            )
+
+            new_size_display = (
+                f"{new_size / (1024 * 1024):.2f} MB"
+                if new_size < 1024 * (1024 * 1024)
+                else f"{new_size / (1024 * 1024 * 1024):.2f} GB"
+            )
+
             print(
                 f"\nCompression of {chapter_word} '{season}{chapters}' "
-                f"from the series '{series_name}' completed.")
+                f"from the series '{series_name}' completed. "
+                f"\nOriginal size: {original_size_display}, "
+                f"New size: {new_size_display}, "
+                f"Reduction: {reduction:.2f}%."
+            )
         except Exception as e:
             print(
                 f"\nError compressing {chapter_word} "
-                f"'{season}{chapters}': {e}")
+                f"'{season}{chapters}': {e}"
+            )
 
 
 # Process series
 def process_series(input_dir, output_dir, name=None, list_file=None):
     series_to_process = []
 
-    # Si se pasa una lista, cargarla
+    # If a list is passed, load it
     if list_file:
         try:
             with open(list_file, 'r') as f:
@@ -326,7 +359,8 @@ def process_movies(input_dir, output_dir_base, name=None, list_file=None):
             movie_path = os.path.join(dirpath, movie_dir)
             movie_file = next(
                 (f for f in os.listdir(movie_path) if f.endswith('.mkv')),
-                None)
+                None
+            )
             if not movie_file:
                 print(f"No .mkv file found in '{movie_path}'. Skipping.")
                 continue
@@ -346,12 +380,42 @@ def process_movies(input_dir, output_dir_base, name=None, list_file=None):
 
             print(f"\nCompressing the movie '{movie_name}'...")
 
+            # Get original file size
+            original_size = os.path.getsize(input_file)
+
             # Compress the movie with a progress bar
             try:
                 compress_video(
                     input_file, output_file, get_video_duration(input_file)
                 )
-                print(f"\nCompression of the movie '{movie_name}' completed.")
+
+                # Get new file size
+                new_size = os.path.getsize(output_file)
+
+                # Calculate reduction
+                reduction = (
+                    ((original_size - new_size) / original_size) * 100
+                    if original_size > 0 else 0
+                )
+
+                original_size_display = (
+                    f"{original_size / (1024 * 1024):.2f} MB"
+                    if original_size < 1024 * (1024 * 1024)
+                    else f"{original_size / (1024 * 1024 * 1024):.2f} GB"
+                )
+
+                new_size_display = (
+                    f"{new_size / (1024 * 1024):.2f} MB"
+                    if new_size < 1024 * (1024 * 1024)
+                    else f"{new_size / (1024 * 1024 * 1024):.2f} GB"
+                )
+
+                print(
+                    f"\nCompression of the movie '{movie_name}' completed. "
+                    f"\nOriginal size: {original_size_display}, "
+                    f"New size: {new_size_display}, "
+                    f"Reduction: {reduction:.2f}%."
+                )
             except Exception as e:
                 print(f"\nError compressing movie '{movie_name}': {e}")
 
