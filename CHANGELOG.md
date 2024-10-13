@@ -1,5 +1,14 @@
 # Changelog
 
+## [v1.4.0](https://github.com/francisjgarcia/media-compressor/releases/v1.4.0) (2024-10-13)
+* Merge pull request #21 from francisjgarcia/feature/diff_and_delete @francisjgarcia ([#936fd80](https://github.com/francisjgarcia/media-compressor/commit/936fd8081b240970e4dfea19c767b15cb9d3a3b6))
+* style: fix flake8 violations for line length and blank lines @francisjgarcia ([#b35d73c](https://github.com/francisjgarcia/media-compressor/commit/b35d73c229636f031153b2973fe7c1f70c677a01))
+* bug(ffmpeg): Kill ffmpeg process if something wrong @francisjgarcia ([#e66a0b6](https://github.com/francisjgarcia/media-compressor/commit/e66a0b624be3557967dd9711530b41ac794e513b))
+* feat(signal): Delete incomplete compressed files after interrupt signal @francisjgarcia ([#df73d33](https://github.com/francisjgarcia/media-compressor/commit/df73d338ccdb54d8448392c2b095b67cefbfc184))
+* feat(compression): Add diff between original and compressed files @francisjgarcia ([#1da43c6](https://github.com/francisjgarcia/media-compressor/commit/1da43c6ec0cde2459ad353a62552030b3625da8c))
+* bug(movies): Fix movies list mapping function @francisjgarcia ([#48ef694](https://github.com/francisjgarcia/media-compressor/commit/48ef69480a14c7e43c3f4f2bc598ebb478a517c0))
+
+
 ## [v1.3.2](https://github.com/francisjgarcia/media-compressor/releases/v1.3.2) (2024-10-05)
 * Merge pull request #20 from francisjgarcia/bug/video_dimensions_x_error [patch] @francisjgarcia ([#8023137](https://github.com/francisjgarcia/media-compressor/commit/8023137915d4b33896fb2af3120b8819b67a1ec4))
 * fix(signal-handling): suppress ffmpeg errors on Ctrl + C interruption @francisjgarcia ([#364bbc2](https://github.com/francisjgarcia/media-compressor/commit/364bbc22db08a3727bddb3fb7400ed6c688e6b68))
