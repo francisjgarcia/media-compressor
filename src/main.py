@@ -107,7 +107,12 @@ def get_video_duration(file_path):
     )
     duration_str = run_command(command)
     if duration_str:
-        return float(duration_str)
+        try:
+            duration = float(duration_str)
+            return duration
+        except ValueError:
+            print(f"Warning: Invalid duration value '{duration_str}' for file '{file_path}'.")
+            return None
     return None
 
 
@@ -140,6 +145,16 @@ def adjust_video_dimensions(input_file):
         print(f"Error parsing dimensions for file '{input_file}': {e}")
         return None, None
 
+def kill_ffmpeg_processes():
+    try:
+        # Get the PIDs of all ffmpeg processes
+        pids = subprocess.check_output(['pgrep', 'ffmpeg']).decode('utf-8').strip().split('\n')
+        for pid in pids:
+            print(f"Terminating ffmpeg process with PID: {pid}")
+            subprocess.run(['kill', pid])  # Terminate the process
+        time.sleep(2)  # Wait a bit to ensure processes have terminated
+    except subprocess.CalledProcessError:
+        print("No ffmpeg processes found.")
 
 # Compress a file using ffmpeg
 def compress_video(input_file, output_file, duration):
@@ -318,6 +333,7 @@ def process_chapter(file_path, series_name, series_season, total_chapters, outpu
 
         except Exception as e:
             print(f"\nError compressing {chapter_word} '{season}{chapters}': {e}")
+            kill_ffmpeg_processes()
             if os.path.exists(output_file):
                 os.remove(output_file)
 
@@ -465,6 +481,7 @@ def process_movies(input_dir, output_dir, name=None, list_file=None):
                 except Exception as e:
                     # Handle errors and delete the output file if compression fails
                     print(f"\nError compressing movie '{movie_name}': {e}")
+                    kill_ffmpeg_processes()
                     if os.path.exists(output_file):
                         os.remove(output_file)
 
