@@ -111,7 +111,9 @@ def get_video_duration(file_path):
             duration = float(duration_str)
             return duration
         except ValueError:
-            print(f"Warning: Invalid duration value '{duration_str}' for file '{file_path}'.")
+            print(
+                f"Warning: Invalid duration value '{duration_str}' "
+                f"for file '{file_path}'.")
             return None
     return None
 
@@ -145,16 +147,23 @@ def adjust_video_dimensions(input_file):
         print(f"Error parsing dimensions for file '{input_file}': {e}")
         return None, None
 
+
 def kill_ffmpeg_processes():
+    """Terminate all ffmpeg processes."""
     try:
         # Get the PIDs of all ffmpeg processes
-        pids = subprocess.check_output(['pgrep', 'ffmpeg']).decode('utf-8').strip().split('\n')
+        pids = subprocess.check_output(
+            ['pgrep', 'ffmpeg']
+        ).decode('utf-8').strip().split('\n')
+
         for pid in pids:
             print(f"Terminating ffmpeg process with PID: {pid}")
             subprocess.run(['kill', pid])  # Terminate the process
+
         time.sleep(2)  # Wait a bit to ensure processes have terminated
     except subprocess.CalledProcessError:
         print("No ffmpeg processes found.")
+
 
 # Compress a file using ffmpeg
 def compress_video(input_file, output_file, duration):
@@ -179,7 +188,10 @@ def compress_video(input_file, output_file, duration):
     # Start ffmpeg in a separate thread to allow interruption
     def run_ffmpeg():
         nonlocal process
-        process = subprocess.Popen(ffmpeg_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            ffmpeg_command, shell=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         process.communicate()  # Wait for process to finish
 
     ffmpeg_thread = threading.Thread(target=run_ffmpeg)
@@ -202,11 +214,17 @@ def compress_video(input_file, output_file, duration):
                 for line in lines:
                     if "out_time_ms" in line:
                         # Extract elapsed time in milliseconds
-                        elapsed_time = int(
-                            line.split("=")[1].strip()
-                        ) / 1000000
-                        pbar.n = elapsed_time  # Update progress bar
-                        pbar.refresh()  # Refresh the bar
+                        try:
+                            elapsed_time = line.split("=")[1].strip()
+                            # Check if the elapsed_time is a valid number
+                            if elapsed_time.isdigit():
+                                elapsed_time = int(elapsed_time) / 1000000
+                                pbar.n = elapsed_time  # Update progress bar
+                                pbar.refresh()  # Refresh the bar
+                            else:
+                                continue
+                        except (IndexError, ValueError):
+                            continue
 
                 time.sleep(1)
             except FileNotFoundError:
@@ -241,7 +259,8 @@ def is_empty(directory):
 
 
 # Process a chapter of a series
-def process_chapter(file_path, series_name, series_season, total_chapters, output_dir):
+def process_chapter(file_path, series_name, series_season,
+                    total_chapters, output_dir):
     global interrupted
     file_name = os.path.basename(file_path)
     season, chapter_list = extract_season_and_chapters(file_name)
@@ -279,27 +298,36 @@ def process_chapter(file_path, series_name, series_season, total_chapters, outpu
         duration = get_video_duration(file_path)
 
         if duration is None:
-            print(f"Skipping {chapter_word} '{season}{chapters}' due to ffprobe failure.")
+            print(
+                f"Skipping {chapter_word} '{season}{chapters}' "
+                "due to ffprobe failure."
+            )
             return
 
         try:
             compress_video(file_path, output_file, duration)
 
             if interrupted:
-                print(f"\nCompression interrupted for file '{file_name}', deleting incomplete output file.\n")
+                print(
+                    f"\nCompression interrupted for file '{file_name}', "
+                    "deleting incomplete output file.\n"
+                )
                 if os.path.exists(output_file):
                     os.remove(output_file)
 
-                # Check if the season directory is empty and delete if needed
+                # Check if the season directory is empty to delete
                 if is_empty(output_dir):
                     print(f"Deleting empty directory: {output_dir}")
                     os.rmdir(output_dir)
 
-                    # Check if the series directory is empty and delete if needed
+                    # Check if the series directory is empty to delete
                     series_dir = os.path.dirname(os.path.dirname(output_dir))
 
                     if is_empty(os.path.join(series_dir, series_name)):
-                        print(f"Deleting empty series directory: {os.path.join(series_dir, series_name)}")
+                        print(
+                            "Deleting empty series directory: "
+                            f"{os.path.join(series_dir, series_name)}"
+                        )
                         os.rmdir(os.path.join(series_dir, series_name))
                 return
 
@@ -332,7 +360,10 @@ def process_chapter(file_path, series_name, series_season, total_chapters, outpu
             )
 
         except Exception as e:
-            print(f"\nError compressing {chapter_word} '{season}{chapters}': {e}")
+            print(
+                f"\nError compressing {chapter_word} "
+                f"'{season}{chapters}': {e}"
+            )
             kill_ffmpeg_processes()
             if os.path.exists(output_file):
                 os.remove(output_file)
@@ -413,7 +444,7 @@ def process_movies(input_dir, output_dir, name=None, list_file=None):
         for file in files:
             if interrupted:
                 break  # Exit immediately if interrupted
-            if file.endswith(".mkv") or file.endswith(".mp4"):  # Ensure it's a video file
+            if file.endswith(".mkv") or file.endswith(".mp4"):
                 file_path = os.path.join(root, file)
                 movie_name = Path(file_path).stem
 
@@ -427,11 +458,16 @@ def process_movies(input_dir, output_dir, name=None, list_file=None):
 
                 # Skip already compressed movies
                 if os.path.exists(output_file):
-                    print(f"\nMovie '{output_file}' has already been compressed; skipping.")
+                    print(
+                        f"\nMovie '{output_file}' has already "
+                        "been compressed. Skipping."
+                    )
                     continue
 
                 # Check if this movie is in the list of movies to process
-                if movies_to_process and movie_name.lower() not in map(str.lower, movies_to_process):
+                if (movies_to_process and
+                        movie_name.lower() not in
+                        map(str.lower, movies_to_process)):
                     continue
 
                 print(f"\nCompressing movie: '{movie_name}'")
@@ -441,11 +477,17 @@ def process_movies(input_dir, output_dir, name=None, list_file=None):
 
                 try:
                     # Compress the video with a progress bar
-                    compress_video(file_path, output_file, get_video_duration(file_path))
+                    compress_video(
+                        file_path, output_file, get_video_duration(file_path)
+                    )
 
-                    # If interrupted during compression, remove the partially written file
+                    # If interrupted during compression remove the output file
                     if interrupted:
-                        print(f"\nCompression interrupted for movie '{movie_name}', deleting incomplete output file. \n")
+                        print(
+                            "\nCompression interrupted for movie "
+                            f"'{movie_name}', deleting incomplete "
+                            "output file. \n"
+                        )
                         if os.path.exists(output_file):
                             os.remove(output_file)
                         return
@@ -479,7 +521,7 @@ def process_movies(input_dir, output_dir, name=None, list_file=None):
                         f"Reduction: {reduction:.2f}%."
                     )
                 except Exception as e:
-                    # Handle errors and delete the output file if compression fails
+                    # Handle errors and delete the output file
                     print(f"\nError compressing movie '{movie_name}': {e}")
                     kill_ffmpeg_processes()
                     if os.path.exists(output_file):
