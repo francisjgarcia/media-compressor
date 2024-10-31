@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.6.0](https://github.com/francisjgarcia/media-compressor/releases/v1.6.0) (2024-10-31)
+* ci: Add github token to docker push registry @francisjgarcia ([#e292429](https://github.com/francisjgarcia/media-compressor/commit/e2924290d387bc1b4bacf09696651e611db1d24e))
+
+
 ## [v1.5.0](https://github.com/francisjgarcia/media-compressor/releases/v1.5.0) (2024-10-31)
 * ci: Add github token to upload CodeQL @francisjgarcia ([#e23a8b1](https://github.com/francisjgarcia/media-compressor/commit/e23a8b1ebdbddb4cffa49592fca77d1cf8d554be))
 * [patch] Merge pull request #4 from francisjgarcia/development @francisjgarcia ([#1b77e5d](https://github.com/francisjgarcia/media-compressor/commit/1b77e5d292aba0faefd936b73a678f2b2f93fcbd))
