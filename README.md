@@ -21,6 +21,7 @@ The project will be developed using Python and Docker, with GitHub Actions for C
     - [Docker Compose](#docker-compose)
   - [GitHub Actions](#github-actions)
     - [CI/CD Pipeline](#cicd-pipeline)
+  - [Scripts](#scripts)
   - [Documentation](#documentation)
   - [Source Code](#source-code)
   - [Tests](#tests)
@@ -52,6 +53,7 @@ The project will be developed using Python and Docker, with GitHub Actions for C
 │   └── compose.yml                         # Docker Compose file to define services and networks
 ├── docs/
 │   └── STYLEGUIDE.md                       # Guidelines for code style and formatting
+├── scripts/                                # Directory for utility scripts
 ├── src/
 │   ├── .env.example                        # Example environment variables file for Docker
 │   ├── main.py                             # Main script of the project
@@ -176,6 +178,22 @@ This repository includes a fully automated CI/CD pipeline using `cicd.yml` GitHu
 5. **Push**: Pushes the Docker image to the GitHub Container Registry.
 6. **Release**: Automatically generates the changelog and creates a new release on GitHub if deploying to `main`.
 7. **Merge**: Merges changes from `main` into the `development` branch if a direct push to `main` occurs.
+
+## Scripts
+
+The `scripts` directory contains utility scripts for the project:
+
+**Makefile**: Contains common commands for building, testing, and running trivy scans on the project. This file can be used to simplify the development process by providing a set of common tasks. To run a command, use the following syntax:
+
+```bash
+make -C scripts
+```
+
+When finished, you can run the following command to clean up the project:
+
+```bash
+make -C scripts clean
+```
 
 ## Documentation
 

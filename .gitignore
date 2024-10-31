@@ -63,3 +63,6 @@ __pycache__/
 
 # Ignore series or movie compression list
 list.txt
+
+# Trivy ignore file
+*.sarif
