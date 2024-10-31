@@ -253,29 +253,36 @@ jobs:
       - name: Load docker image
         run: docker load -i /tmp/docker-image.tar
 
-      - name: Run trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.20.0
+      - name: Scan Image
+        id: scan
+        uses: anchore/scan-action@v3
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
         with:
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-          image-ref: 'ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          exit-code: '1'
+          image: 'ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}'
+          output-format: sarif
+          severity-cutoff: critical
+          only-fixed: true
+          fail-build: true
 
       - name: Create scan summary
         if: always()
+        env:
+          SCAN_FILE: ${{ steps.scan.outputs.sarif }}
         run: |
-          echo "## Vulnerability Scan summary" > $GITHUB_STEP_SUMMARY
-          if jq -e '.runs[].results | length == 0' trivy-results.sarif > /dev/null; then
-            echo "No vulnerabilities found." >> $GITHUB_STEP_SUMMARY
-          else
+          echo "## Vulnerability Scan Summary" > $GITHUB_STEP_SUMMARY
+
+          if grep -q '"ruleId":' "${{ env.SCAN_FILE }}"; then
             echo "### Summary of Vulnerabilities" >> $GITHUB_STEP_SUMMARY
-            jq -r '.runs[].results[] | "\(.level): \(.message.text) (\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine))"' trivy-results.sarif >> $GITHUB_STEP_SUMMARY
+            echo "| Rule ID | Description |" >> $GITHUB_STEP_SUMMARY
+            echo "| -------- | ----------- |" >> $GITHUB_STEP_SUMMARY
+
+            # Extraer ruleId y su descripción
+            jq -r '.runs[].results[] | "| \(.ruleId) | \(.message.text) |"' "${{ env.SCAN_FILE }}" >> $GITHUB_STEP_SUMMARY
+
+          else
+            echo "No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
           fi
 
   push:
@@ -317,7 +324,7 @@ jobs:
             docker push ghcr.io/${{ env.GITHUB_REPOSITORY }}:latest
           fi
 
-      - name: Create scan summary
+      - name: Create push summary
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_BRANCH: ${{ github.ref }}
