@@ -1,5 +1,17 @@
 # Changelog
 
+## [v1.5.0](https://github.com/francisjgarcia/media-compressor/releases/v1.5.0) (2024-10-31)
+* ci: Add github token to upload CodeQL @francisjgarcia ([#e23a8b1](https://github.com/francisjgarcia/media-compressor/commit/e23a8b1ebdbddb4cffa49592fca77d1cf8d554be))
+* [patch] Merge pull request #4 from francisjgarcia/development @francisjgarcia ([#1b77e5d](https://github.com/francisjgarcia/media-compressor/commit/1b77e5d292aba0faefd936b73a678f2b2f93fcbd))
+* docs: Document new makefile script @francisjgarcia ([#c5df8e1](https://github.com/francisjgarcia/media-compressor/commit/c5df8e161ee022358dfaedba00b0841b9335227c))
+* scripts(make): Add makefile to use trivy on local @francisjgarcia ([#e861fd2](https://github.com/francisjgarcia/media-compressor/commit/e861fd2f662e55654da520949c692255df3a4ca4))
+* ci: Change wrong detect to trivy scan vulnerability @francisjgarcia ([#eba44a3](https://github.com/francisjgarcia/media-compressor/commit/eba44a3cc61674ebe19ede9cdfede0fe4d6d608c))
+* [patch] Merge pull request #2 from francisjgarcia/dependabot/docker/docker/python-3.13-alpine @francisjgarcia ([#b4cc26a](https://github.com/francisjgarcia/media-compressor/commit/b4cc26a509a87397d9b9e00db021c24c9e80d776))
+* [skip ci] Merge pull request #1 from francisjgarcia/dependabot/pip/src/tqdm-4.66.6 @francisjgarcia ([#35d646d](https://github.com/francisjgarcia/media-compressor/commit/35d646d6cbb354be6ae0649fc82447b0ba1c7a71))
+* chore(docker): bump python from 3.12-alpine to 3.13-alpine in /docker @francisjgarcia ([#5aa5499](https://github.com/francisjgarcia/media-compressor/commit/5aa5499f566848f79a1d62fbe8905270eadef07f))
+* chore(deps): bump tqdm from 4.66.5 to 4.66.6 in /src @francisjgarcia ([#3b18967](https://github.com/francisjgarcia/media-compressor/commit/3b1896792a59d80f8e7e4c7dc85d99416c48f487))
+
+
 ## [v1.4.0](https://github.com/francisjgarcia/media-compressor/releases/v1.4.0) (2024-10-13)
 * Merge pull request #21 from francisjgarcia/feature/diff_and_delete @francisjgarcia ([#936fd80](https://github.com/francisjgarcia/media-compressor/commit/936fd8081b240970e4dfea19c767b15cb9d3a3b6))
 * style: fix flake8 violations for line length and blank lines @francisjgarcia ([#b35d73c](https://github.com/francisjgarcia/media-compressor/commit/b35d73c229636f031153b2973fe7c1f70c677a01))
