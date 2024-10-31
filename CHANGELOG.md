@@ -1,5 +1,9 @@
 # Changelog
 
+## [v1.7.0](https://github.com/francisjgarcia/media-compressor/releases/v1.7.0) (2024-10-31)
+* ci: Add docker login job @francisjgarcia ([#6fbe18c](https://github.com/francisjgarcia/media-compressor/commit/6fbe18cff300a1da23dc4b11a8f8c1dac8ef5e67))
+
+
 ## [v1.6.0](https://github.com/francisjgarcia/media-compressor/releases/v1.6.0) (2024-10-31)
 * ci: Add github token to docker push registry @francisjgarcia ([#e292429](https://github.com/francisjgarcia/media-compressor/commit/e2924290d387bc1b4bacf09696651e611db1d24e))
 
