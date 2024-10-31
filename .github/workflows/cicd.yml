@@ -317,7 +317,6 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_BRANCH: ${{ github.ref }}
           TAG_VERSION: ${{ needs.setup.outputs.tag_version }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           docker push ghcr.io/${{ env.GITHUB_REPOSITORY }}:${{ env.TAG_VERSION }}
           if [[ "${{ env.GITHUB_BRANCH }}" == "refs/heads/main" ]]; then
