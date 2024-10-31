@@ -271,16 +271,11 @@ jobs:
         if: always()
         run: |
           echo "## Vulnerability Scan summary" > $GITHUB_STEP_SUMMARY
-          if [ -s trivy-results.sarif ]; then
-            CRITICAL_OR_HIGH=$(jq -r '.runs[].results[] | select(.level == "error")' trivy-results.sarif)
-            if [ -n "$CRITICAL_OR_HIGH" ]; then
-              echo "### Summary of critical and high Vulnerabilities" >> $GITHUB_STEP_SUMMARY
-              echo "$CRITICAL_OR_HIGH" | jq -r '"\(.message.text) (\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine))\n"' >> $GITHUB_STEP_SUMMARY
-            else
-              echo "No critical or high vulnerabilities found." >> $GITHUB_STEP_SUMMARY
-            fi
-          else
+          if jq -e '.runs[].results | length == 0' trivy-results.sarif > /dev/null; then
             echo "No vulnerabilities found." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Summary of Vulnerabilities" >> $GITHUB_STEP_SUMMARY
+            jq -r '.runs[].results[] | "\(.level): \(.message.text) (\(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine))"' trivy-results.sarif >> $GITHUB_STEP_SUMMARY
           fi
 
   push:
