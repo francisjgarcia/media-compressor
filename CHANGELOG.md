@@ -1,5 +1,14 @@
 # Changelog
 
+## [v1.5.1](https://github.com/francisjgarcia/media-compressor/releases/v1.5.1) (2024-10-31)
+* [patch] Merge pull request #5 from francisjgarcia/development @francisjgarcia ([#da7da6f](https://github.com/francisjgarcia/media-compressor/commit/da7da6f3c399cbcd4ffe7f7f1c38d610fe787fa9))
+* ci: Delete github token to docker push @francisjgarcia ([#9e42d6a](https://github.com/francisjgarcia/media-compressor/commit/9e42d6af5363178140c27680068cdb2af91284a0))
+* docs: update CHANGELOG.md for release v1.7.0 @francisjgarcia ([#082b6ad](https://github.com/francisjgarcia/media-compressor/commit/082b6adc7f5b5aee2b6556ed74643673502d2f3c))
+* ci: Add docker login job @francisjgarcia ([#6fbe18c](https://github.com/francisjgarcia/media-compressor/commit/6fbe18cff300a1da23dc4b11a8f8c1dac8ef5e67))
+* docs: update CHANGELOG.md for release v1.6.0 @francisjgarcia ([#2be94b3](https://github.com/francisjgarcia/media-compressor/commit/2be94b355c98ce1359408038e48826910450b70a))
+* ci: Add github token to docker push registry @francisjgarcia ([#e292429](https://github.com/francisjgarcia/media-compressor/commit/e2924290d387bc1b4bacf09696651e611db1d24e))
+
+
 ## [v1.7.0](https://github.com/francisjgarcia/media-compressor/releases/v1.7.0) (2024-10-31)
 * ci: Add docker login job @francisjgarcia ([#6fbe18c](https://github.com/francisjgarcia/media-compressor/commit/6fbe18cff300a1da23dc4b11a8f8c1dac8ef5e67))
 
