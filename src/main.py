@@ -308,7 +308,7 @@ def process_chapter(file_path, series_name, series_season,
             return
         print(
             f"\nFile '{file_name}' has a bitrate of "
-            f"{video_bitrate } Mbps, processing...")
+            f"{video_bitrate} Mbps, processing...")
 
     if season and chapter_list:
         # Use first chapter for output file name
@@ -553,7 +553,7 @@ def process_movies(input_dir, output_dir, name=None, list_file=None,
                         break
                     print(
                         f"\nFile '{movie_name}' has a bitrate of "
-                        f"{video_bitrate } Mbps, processing...")
+                        f"{video_bitrate} Mbps, processing...")
 
                 if compress_bitrate:
                     print(
