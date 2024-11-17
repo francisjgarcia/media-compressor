@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.6.0](https://github.com/francisjgarcia/media-compressor/releases/v1.6.0) (2024-11-17)
+* Merge pull request #7 from francisjgarcia/development @francisjgarcia ([#0bdaa78](https://github.com/francisjgarcia/media-compressor/commit/0bdaa78f879c493835bb59847acecf5e9e85268c))
+* fix(white space): Fix white space after variable @francisjgarcia ([#6a57a60](https://github.com/francisjgarcia/media-compressor/commit/6a57a601f5e2e3985a9deeda6c11df23ef6d2942))
+* feat(bitrate): Add filter bitrate to compress an specific bitrate @francisjgarcia ([#cf658e6](https://github.com/francisjgarcia/media-compressor/commit/cf658e6c901584e77b7b7de907671a7cb7965d0c))
+
+
 ## [v1.5.2](https://github.com/francisjgarcia/media-compressor/releases/v1.5.2) (2024-11-15)
 * [patch] Merge pull request #6 from francisjgarcia/dependabot/pip/src/tqdm-4.67.0 @francisjgarcia ([#2da38d7](https://github.com/francisjgarcia/media-compressor/commit/2da38d7a90ea83571c8d813e0b1477929f73917d))
 * chore(deps): bump tqdm from 4.66.6 to 4.67.0 in /src @francisjgarcia ([#143cac5](https://github.com/francisjgarcia/media-compressor/commit/143cac58525064b235bc799d7b4c968235f24059))
