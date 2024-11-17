@@ -81,9 +81,9 @@ def unmount_and_cleanup(temp_dir):
             f"umount {shlex.quote(temp_dir)}", shell=True, check=True
         )
         shutil.rmtree(temp_dir)  # Remove the temporary directory
-        print(f"Folder {temp_dir} unmounted and deleted")
+        print(f"Folder {temp_dir} unmounted and deleted\n")
     except subprocess.CalledProcessError as e:
-        print(f"Error unmounting {temp_dir}: {e}")
+        print(f"Error unmounting {temp_dir}: {e}\n")
 
 
 # Run a command and capture the output
@@ -97,6 +97,25 @@ def run_command(command):
     except subprocess.CalledProcessError as e:
         print(f"Error executing command: {command}\nOutput: {e.stderr}")
         return None
+
+
+# Get the bitrate of a video using ffprobe
+def get_video_bitrate(file_path):
+    command = (
+        f"ffprobe -v error -show_entries format=bit_rate -of "
+        f"default=noprint_wrappers=1:nokey=1 {shlex.quote(file_path)}"
+    )
+    bitrate_str = run_command(command)
+    if bitrate_str:
+        try:
+            bitrate = int(bitrate_str) / 1000000
+            return bitrate
+        except ValueError:
+            print(
+                f"Warning: Invalid bitrate value '{bitrate_str}' "
+                f"for file '{file_path}'.")
+            return None
+    return None
 
 
 # Get the duration of a video using ffprobe
@@ -166,7 +185,7 @@ def kill_ffmpeg_processes():
 
 
 # Compress a file using ffmpeg
-def compress_video(input_file, output_file, duration):
+def compress_video(input_file, output_file, duration, compress_bitrate=None):
     global interrupted
 
     # Create a temporary file to receive ffmpeg progress
@@ -180,8 +199,15 @@ def compress_video(input_file, output_file, duration):
         f"-preset {PRESET} -c:a copy -c:s copy -probesize 50M "
         f"-analyzeduration 100M {scale_filter} "
         f"-progress {shlex.quote(progress_file)} "
-        f"-stats {shlex.quote(output_file)}"
+        f"-stats {shlex.quote(output_file)} "
     )
+
+    # Check if the compress_bitrate is specified
+    if compress_bitrate is not None:
+        # Convert the bitrate to kbps
+        bitrate_kbps = compress_bitrate * 1000
+        # Add the bitrate to the ffmpeg command
+        ffmpeg_command += f"-b:v {bitrate_kbps}k"
 
     process = None
 
@@ -260,10 +286,29 @@ def is_empty(directory):
 
 # Process a chapter of a series
 def process_chapter(file_path, series_name, series_season,
-                    total_chapters, output_dir):
+                    total_chapters, output_dir, show_bitrate=None,
+                    filter_bitrate=None, compress_bitrate=None):
     global interrupted
     file_name = os.path.basename(file_path)
     season, chapter_list = extract_season_and_chapters(file_name)
+
+    if show_bitrate:
+        print(
+            f"File '{file_name}' has a bitrate of "
+            f"{get_video_bitrate(file_path)} Mbps.")
+        return
+
+    # Get the video bitrate and compare it with the specified bitrate
+    if filter_bitrate:
+        video_bitrate = get_video_bitrate(file_path)
+        if video_bitrate and video_bitrate < filter_bitrate:
+            print(
+                f"\nSkipping {file_name} (bitrate {video_bitrate} Mbps "
+                f", lower than {filter_bitrate} Mbps).")
+            return
+        print(
+            f"\nFile '{file_name}' has a bitrate of "
+            f"{video_bitrate } Mbps, processing...")
 
     if season and chapter_list:
         # Use first chapter for output file name
@@ -285,11 +330,19 @@ def process_chapter(file_path, series_name, series_season,
         chapter_word = "chapter" if len(chapter_list) == 1 else "chapters"
         total_chapter_word = "chapter" if total_chapters == 1 else "chapters"
 
-        print(
-            f"\nCompressing {chapter_word} {chapters} "
-            f"of season {series_season} ({total_chapters} "
-            f"{total_chapter_word} total) in series '{series_name}'."
-        )
+        if compress_bitrate:
+            print(
+                f"Compressing {chapter_word} {chapters} "
+                f"of season {series_season} ({total_chapters} "
+                f"{total_chapter_word} total) in series '{series_name}' "
+                f"with a bitrate of {compress_bitrate} Mbps."
+            )
+        else:
+            print(
+                f"\nCompressing {chapter_word} {chapters} "
+                f"of season {series_season} ({total_chapters} "
+                f"{total_chapter_word} total) in series '{series_name}'."
+            )
 
         # Get original file size
         original_size = os.path.getsize(file_path)
@@ -305,7 +358,7 @@ def process_chapter(file_path, series_name, series_season,
             return
 
         try:
-            compress_video(file_path, output_file, duration)
+            compress_video(file_path, output_file, duration, compress_bitrate)
 
             if interrupted:
                 print(
@@ -370,7 +423,9 @@ def process_chapter(file_path, series_name, series_season,
 
 
 # Process series
-def process_series(input_dir, output_dir, name=None, list_file=None):
+def process_series(input_dir, output_dir, name=None, list_file=None,
+                   show_bitrate=None, filter_bitrate=None,
+                   compress_bitrate=None):
     global interrupted
     series_to_process = []
 
@@ -401,13 +456,19 @@ def process_series(input_dir, output_dir, name=None, list_file=None):
                     if name and name.lower() in series_name.lower():
                         process_chapter(
                             file_path, series_name, series_season,
-                            total_chapters, output_dir
+                            total_chapters, output_dir,
+                            show_bitrate=show_bitrate,
+                            filter_bitrate=filter_bitrate,
+                            compress_bitrate=compress_bitrate
                         )
 
                     elif not name and not series_to_process:
                         process_chapter(
                             file_path, series_name, series_season,
-                            total_chapters, output_dir
+                            total_chapters, output_dir,
+                            show_bitrate=show_bitrate,
+                            filter_bitrate=filter_bitrate,
+                            compress_bitrate=compress_bitrate
                         )
 
                     elif not name and series_to_process:
@@ -417,14 +478,19 @@ def process_series(input_dir, output_dir, name=None, list_file=None):
                         ):
                             process_chapter(
                                 file_path, series_name, series_season,
-                                total_chapters, output_dir
+                                total_chapters, output_dir,
+                                show_bitrate=show_bitrate,
+                                filter_bitrate=filter_bitrate,
+                                compress_bitrate=compress_bitrate
                             )
 
     print("\nAll series have been fully compressed.\n")
 
 
 # Process movies
-def process_movies(input_dir, output_dir, name=None, list_file=None):
+def process_movies(input_dir, output_dir, name=None, list_file=None,
+                   show_bitrate=None, filter_bitrate=None,
+                   compress_bitrate=None):
     global interrupted
     movies_to_process = []
 
@@ -470,7 +536,32 @@ def process_movies(input_dir, output_dir, name=None, list_file=None):
                         map(str.lower, movies_to_process)):
                     continue
 
-                print(f"\nCompressing movie: '{movie_name}'")
+                if show_bitrate:
+                    print(
+                        f"File '{movie_name}' has a bitrate of "
+                        f"{get_video_bitrate(file_path)} Mbps.")
+                    break
+
+                # Check if the bitrate is lower than the specified bitrate
+                if filter_bitrate:
+                    video_bitrate = get_video_bitrate(file_path)
+                    if video_bitrate and video_bitrate < filter_bitrate:
+                        print(
+                            f"\nSkipping {movie_name} (bitrate "
+                            f"{video_bitrate} Mbps, lower than "
+                            f"{filter_bitrate} Mbps).")
+                        break
+                    print(
+                        f"\nFile '{movie_name}' has a bitrate of "
+                        f"{video_bitrate } Mbps, processing...")
+
+                if compress_bitrate:
+                    print(
+                        f"Compressing movie '{movie_name}' with a bitrate of "
+                        f"{compress_bitrate} Mbps."
+                    )
+                else:
+                    print(f"\nCompressing movie: '{movie_name}'")
 
                 # Get the original file size
                 original_size = os.path.getsize(file_path)
@@ -478,7 +569,8 @@ def process_movies(input_dir, output_dir, name=None, list_file=None):
                 try:
                     # Compress the video with a progress bar
                     compress_video(
-                        file_path, output_file, get_video_duration(file_path)
+                        file_path, output_file, get_video_duration(file_path),
+                        compress_bitrate
                     )
 
                     # If interrupted during compression remove the output file
@@ -545,6 +637,16 @@ def main():
                             help="Specify the name of the series/movie")
         parser.add_argument("--list",
                             help="Specify a list of series/movies")
+        parser.add_argument("--show-bitrate", action="store_true",
+                            help="Show the bitrate of the video files.")
+        parser.add_argument("--filter-bitrate",
+                            type=int,
+                            help="Specify a minimum bitrate (in Mbps) "
+                            "to filter files.")
+        parser.add_argument("--compress-bitrate",
+                            type=int,
+                            help="If set, compress files with bitrate higher "
+                            "than --filter-bitrate to the specified bitrate.")
         args = parser.parse_args()
 
         # Check if both --name and --list are specified
@@ -553,6 +655,13 @@ def main():
                 "Error: You cannot specify both "
                 "--name and --list at the same time."
             )
+            sys.exit(1)
+
+        # Check if --compress-bitrate is specified without --filter-bitrate
+        if args.filter_bitrate and not args.compress_bitrate:
+            print(
+                "Error: --compress-bitrate must be "
+                "specified when --filter-bitrate is used.")
             sys.exit(1)
 
         # Register the SIGINT (Ctrl+C) signal handler
@@ -568,7 +677,10 @@ def main():
             )
             if input_dir and output_dir:
                 process_series(
-                    input_dir, output_dir, name=args.name, list_file=args.list
+                    input_dir, output_dir, name=args.name,
+                    list_file=args.list, show_bitrate=args.show_bitrate,
+                    filter_bitrate=args.filter_bitrate,
+                    compress_bitrate=args.compress_bitrate
                 )
                 unmount_and_cleanup(input_dir)
                 unmount_and_cleanup(output_dir)
@@ -582,7 +694,10 @@ def main():
             )
             if input_dir and output_dir:
                 process_movies(
-                    input_dir, output_dir, name=args.name, list_file=args.list
+                    input_dir, output_dir, name=args.name,
+                    list_file=args.list, show_bitrate=args.show_bitrate,
+                    filter_bitrate=args.filter_bitrate,
+                    compress_bitrate=args.compress_bitrate
                 )
                 unmount_and_cleanup(input_dir)
                 unmount_and_cleanup(output_dir)
