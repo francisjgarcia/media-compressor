@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.7.0](https://github.com/francisjgarcia/media-compressor/releases/v1.7.0) (2024-12-01)
+* Merge pull request #8 from francisjgarcia/dependabot/pip/src/tqdm-4.67.1 @francisjgarcia ([#136652b](https://github.com/francisjgarcia/media-compressor/commit/136652be952c81e65e56702565dc50750eed2c9a))
+* chore(deps): bump tqdm from 4.67.0 to 4.67.1 in /src @francisjgarcia ([#09abad0](https://github.com/francisjgarcia/media-compressor/commit/09abad0752dad9009bc7c2d79b7e4022a092ae6f))
+
+
 ## [v1.6.0](https://github.com/francisjgarcia/media-compressor/releases/v1.6.0) (2024-11-17)
 * Merge pull request #7 from francisjgarcia/development @francisjgarcia ([#0bdaa78](https://github.com/francisjgarcia/media-compressor/commit/0bdaa78f879c493835bb59847acecf5e9e85268c))
 * fix(white space): Fix white space after variable @francisjgarcia ([#6a57a60](https://github.com/francisjgarcia/media-compressor/commit/6a57a601f5e2e3985a9deeda6c11df23ef6d2942))
